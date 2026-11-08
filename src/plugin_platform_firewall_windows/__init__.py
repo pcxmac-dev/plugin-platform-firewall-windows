@@ -33,7 +33,7 @@ from liminal_libs.machines.firewall import GROUP, NAME, Firewall, FirewallError,
 from liminal_libs.machines.plugin import CommandError
 from liminal_libs.machines.windows import PowerShell, is_elevated, quote
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -258,6 +258,7 @@ class RiskRefused(ValueError):
 
 class WindowsFirewallPlugin(Firewall):
     name = "firewall-windows"
+    ICON = "windowsbricks"  # the four panes of Windows, each a wall of bricks (liminal-libs 1.33.0's icons.js)
     title = "Windows Firewall"
     about = ("Windows Defender Firewall, the networks and Microsoft Defender on this PC: every rule and profile read, queried "
              "and changed on your word (an administrator's, through UAC)")

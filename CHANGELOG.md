@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 (2026-11-08)
+
+Its icon is the four panes of Windows, each a wall of bricks, drawn in the library's line (liminal-libs 1.33.0's `windowsbricks`; the user: "for the firewalls, lets use an icon of TUX penguin or Windows and then convert it to a patchwork of bricks"). Needs liminal-libs>=1.33.0.
+
 ## 0.2.0 (2026-11-08)
 
 Read whole, queried and changed (the user: "windows firewall, i need it to be able to read the configuration, and make

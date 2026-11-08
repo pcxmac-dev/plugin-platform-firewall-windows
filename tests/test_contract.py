@@ -10,3 +10,15 @@ def test_every_plugin_here_conforms_to_the_class_contract():
     found = assert_module_conforms(module)
     assert found and all(p.api == "2.1" and not p.is_record for p in found)
     assert {p.SYSTEM for p in found} == {"platform"} and {p.KIND for p in found} == {"machine"}
+
+
+def test_its_icon_is_its_makers_mark_drawn_by_the_library():
+    """Its icon in the platform's list and tray: the four panes of Windows, each a wall of bricks, a name the
+    library's icons.js draws (the user, 2026-11-08: "for the firewalls, lets use an icon of TUX penguin or Windows
+    and then convert it to a patchwork of bricks")."""
+    import re
+
+    from liminal_libs.ui import STATIC
+
+    drawn = set(re.findall(r"^\s*([a-z]+):\s*'", (STATIC / "icons.js").read_text(encoding="utf-8"), re.M))
+    assert {p.ICON for p in assert_module_conforms(module)} == {"windowsbricks"} and "windowsbricks" in drawn
