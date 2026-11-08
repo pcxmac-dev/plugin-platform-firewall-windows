@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plugin-platform-firewall-windows"
-version = "0.1.0"  # the plugin's own release (CHANGELOG.md); the app shows it on the Plugins view
-description = "Windows Firewall for Liminal: Windows Defender Firewall on, the framework's pages kept to this machine, the ports its services need opened as Liminal's own rules."
+version = "0.2.0"  # the plugin's own release (CHANGELOG.md); the app shows it on the Plugins view
+description = "Windows Firewall for Liminal: Windows Defender Firewall, the networks and Microsoft Defender on this PC, every rule and profile read, queried and changed on your word."
 readme = "README.md"
 requires-python = ">=3.10"
 # the library it plugs into (the machine kind: liminal_libs.machines, plugin API 2.1)
@@ -19,6 +19,10 @@ firewall-windows = "plugin_platform_firewall_windows"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+# the one PowerShell read of the whole configuration
+plugin_platform_firewall_windows = ["*.ps1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
