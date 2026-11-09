@@ -21,4 +21,4 @@ def test_its_icon_is_its_makers_mark_drawn_by_the_library():
     from liminal_libs.ui import STATIC
 
     drawn = set(re.findall(r"^\s*([a-z]+):\s*'", (STATIC / "icons.js").read_text(encoding="utf-8"), re.M))
-    assert {p.ICON for p in assert_module_conforms(module)} == {"windowsbricks"} and "windowsbricks" in drawn
+    assert {p.ICON for p in assert_module_conforms(module)} == {"wallglobe"} and "wallglobe" in drawn  # the user's picture (1.34.0)
