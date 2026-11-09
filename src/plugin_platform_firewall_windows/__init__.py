@@ -9,6 +9,13 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   thread when the plugin is attached and again after every change, so the platform's page asks it nothing slow.
 - Queries: the rules filtered by a preset (inbound allowed, inbound blocked, outbound, Liminal's, turned off, all) or
   found by words, a port, a direction and an action.
+- Groups (0.3.0; the user: "for both firewalls, i need to have groups, like system or application and then unassociated
+  rules not tied to a specific application or system process can be in an other, i can create labels, like system or
+  application, as well and move the rules in to that"): every rule sorted (sort_rule) into System (Windows' own: its
+  services, the System process, its programs in Windows' folder, its own app packages and rule groups), Application (a
+  program or a Microsoft Store app installed, Liminal's rules) or Other (no program, service or app: ports and addresses
+  alone); the user's labels and moves kept through the platform's login (the library's rulegroups), never in Windows'
+  firewall: no rule changes when it is moved.
 - Changes, each asked by a form and confirmed: a rule turned on or off, removed (never one of Windows' own: those are
   turned off instead), or made (in the rule group "Liminal"); a profile's firewall turned on or off, its default for
   what comes in or goes out, its notifications; a network made private or public. Turning a profile off, or letting
@@ -22,6 +29,8 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
 """
 from __future__ import annotations
 
+import ntpath
+import os
 import re
 import threading
 import time
@@ -31,9 +40,10 @@ from pathlib import Path
 
 from liminal_libs.machines.firewall import GROUP, NAME, Firewall, FirewallError, Rule
 from liminal_libs.machines.plugin import CommandError
+from liminal_libs.machines.rulegroups import Sorted, key_of
 from liminal_libs.machines.windows import PowerShell, is_elevated, quote
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -42,7 +52,13 @@ PROFILE_NAMES = ("Domain", "Private", "Public")
 READ_SCRIPT = Path(__file__).with_name("read.ps1")
 READ_S = 60.0  # the configuration read again once it is this old
 FIRST_WAIT_S = 8.0  # how long the first status waits for the first read
-ROWS = 100  # rules listed at most
+ROWS = 100  # rules listed at most in each group
+WINDIR = (os.environ.get("SystemRoot") or r"C:\Windows").rstrip("\\")  # Windows' folder: its programs are the system's
+GROUP_NOTES = {
+    "system": "Windows' own: its services, the System process, its programs in Windows' folder, its app packages and rule groups",
+    "application": "a program or a Microsoft Store app installed, Liminal's rules too",
+    "other": "tied to no program, service or app: ports and addresses alone",
+}
 RULE_FIELDS = ("$pf = $_ | Get-NetFirewallPortFilter; $af = $_ | Get-NetFirewallAddressFilter; "
                "[pscustomobject]@{ Name = $_.DisplayName; Group = [string]$_.Group; Direction = $_.Direction.ToString(); "
                "Action = $_.Action.ToString(); Enabled = ($_.Enabled.ToString() -eq 'True'); Protocol = [string]$pf.Protocol; "
@@ -91,7 +107,10 @@ def rule_of(row: dict) -> Rule:
 class WinRule:
     """A rule as Windows holds it: `id` (its unique name: what a change names), its display name and group, whether it
     is one of Windows' own (`builtin`: its group a resource string; turned off rather than removed), and what it
-    matches. A port filter or remote addresses Windows did not give a non-administrator are None (not read)."""
+    matches. A port filter or remote addresses Windows did not give a non-administrator are None (not read). What it is
+    tied to (0.3.0): its program, its service (a Windows service's short name), its owner (an app container's: a
+    Microsoft Store app's rule) and its app's package family, `package_system` when Windows signed that package as its
+    own; `source` is its rule group as Windows keeps it (a resource string for Windows' own)."""
     id: str
     name: str
     group: str = ""
@@ -106,6 +125,11 @@ class WinRule:
     remote_ports: str | None = "Any"
     remote: str | None = "Any"
     description: str = ""
+    source: str = ""
+    service: str = ""
+    owner: str = ""
+    package: str = ""
+    package_system: bool = False
 
     @property
     def owned(self) -> bool:
@@ -136,7 +160,8 @@ class WinRule:
     def said(self) -> dict:
         return {"id": self.id, "name": self.name, "group": self.group, "builtin": self.builtin, "enabled": self.enabled,
                 "direction": self.direction, "action": self.action, "profiles": self.profiles, "program": self.program,
-                "protocol": self.protocol, "local": self.local, "remotePorts": self.remote_ports, "remote": self.remote}
+                "protocol": self.protocol, "local": self.local, "remotePorts": self.remote_ports, "remote": self.remote,
+                "service": self.service, "package": self.package}
 
 
 @dataclass(frozen=True)
@@ -175,7 +200,9 @@ def parse_snapshot(data: dict, at: float, took: float) -> Snapshot:
             enabled=bool(r.get("Enabled")), direction="out" if str(r.get("Direction")) == "Outbound" else "in",
             action="block" if str(r.get("Action")) == "Block" else "allow", profiles=str(r.get("Profile") or "Any"),
             program=str(r.get("Program") or "Any"), protocol=_text(r.get("Protocol")), local=_text(r.get("LocalPort")),
-            remote_ports=_text(r.get("RemotePort")), remote=_text(r.get("Remote")), description=str(r.get("Description") or "")))
+            remote_ports=_text(r.get("RemotePort")), remote=_text(r.get("Remote")), description=str(r.get("Description") or ""),
+            source=source, service=str(r.get("Service") or ""), owner=str(r.get("Owner") or ""), package=str(r.get("Package") or ""),
+            package_system=bool(r.get("PackageSystem"))))
     profiles = tuple({"name": str(p.get("Name")), "enabled": bool(p.get("Enabled")), "inbound": str(p.get("Inbound") or ""),
                       "outbound": str(p.get("Outbound") or ""), "notify": str(p.get("Notify") or ""),
                       "allowInbound": str(p.get("AllowInbound") or ""), "logBlocked": str(p.get("LogBlocked") or ""),
@@ -210,7 +237,7 @@ class Query:
         if self.port and not r.covers(self.port):
             return False
         if self.words:
-            hay = " ".join((r.name, r.group, r.program, r.description, r.id)).lower()
+            hay = " ".join((r.name, r.group, r.program, r.description, r.id, r.service, r.package)).lower()
             return all(w in hay for w in self.words.lower().split())
         return True
 
@@ -562,6 +589,11 @@ class WindowsFirewallPlugin(Firewall):
             self._rt.query = q if preset == "found" else Query(preset)
         return {"said": f"showing {PRESETS.get(preset, ('found',))[0].lower()}", "ok": True}
 
+    def sorted_rules(self) -> dict[str, Sorted]:
+        """Every rule read, by its key (its id's), with its own group (sort_rule): what a move checks."""
+        snap = self._rt.snap
+        return {key_of(r.id): sort_rule(r) for r in (snap.rules if snap else ())}
+
     def rules_shown(self) -> tuple[Query, list[WinRule]]:
         """The rules the table lists: those the query matches; for a port, the rules naming it first, then ranges, then
         every port (a rule for every port covers it too, for its program)."""
@@ -667,39 +699,43 @@ class WindowsFirewallPlugin(Firewall):
                             {"title": "Notifications"}, {"title": "Used by"}, {"title": ""}], "rows": rows}
 
     def _rules_table(self) -> dict:
+        """The rules shown, in their groups (0.3.0): System, Application, Other and the user's labels, each listing its
+        first ROWS; a rule's group found by sort_rule, or where the user moved it."""
         q, found = self.rules_shown()
         rows = []
-        for r in found[:ROWS]:
+        for r in found:
             label = f"{r.name} ({r.id})"
-            rows.append([cell(r.name, r.group or None), r.direction, r.action, ports_said(r), r.program,
+            tied = (f"service {r.service}" if r.service else f"app {r.package.split('_')[0]}" if r.package
+                    else "an app's own rule" if r.owner and r.program in ("", "Any") else None)
+            rows.append((key_of(r.id), sort_rule(r), [cell(r.name, r.group or None), r.direction, r.action, ports_said(r), cell(r.program, tied),
                          "not read" if r.remote is None else ("any" if r.remote in ("*", "Any") else r.remote), r.profiles,
                          "on" if r.enabled else "off",
                          {"form": "rule-state", "title": "Turn off" if r.enabled else "Turn on",
                           "values": {"rule_id": r.id, "enabled": "off" if r.enabled else "on", "label": label},
                           "label": f"Turn {'off' if r.enabled else 'on'} {r.name}"},
                          {"form": "rule-remove", "title": "Remove", "values": {"rule_id": r.id, "label": label}, "label": f"Remove {r.name}"}
-                         if not r.builtin else "–"])
+                         if not r.builtin else "–"]))
         choices = [{"value": k, "title": t, "note": plural(sum(1 for x in (self._rt.snap.rules if self._rt.snap else ()) if f(x)), "rule")}
                    for k, (t, f) in PRESETS.items()]
         if q.found:
             choices.append({"value": "found", "title": "Found", "note": q.words_said()})
-        more = len(found) - len(rows)
-        return {"title": "Rules",
-                "note": f"{len(found)} shown: {q.words_said()}" + (f"; the first {ROWS} listed, {more} more: Find narrows them" if more > 0 else ""),
+        base = {"title": "Rules",
+                "note": f"{len(found)} shown: {q.words_said()}; moving a rule to another group changes nothing in the firewall",
                 "options": [{"title": "Rules shown", "hook": "show_rules", "value": "found" if q.found else q.preset, "choices": choices}],
-                "columns": [{"title": "Rule"}, {"title": "Direction"}, {"title": "Action"}, {"title": "Protocol and ports"}, {"title": "Program"},
-                            {"title": "Remote"}, {"title": "Profiles"}, {"title": "State"}, {"title": ""}, {"title": ""}],
-                "rows": rows, "empty": "No rule shown: another choice, or Find, lists more.",
+                "columns": [{"title": "Rule"}, {"title": "Direction"}, {"title": "Action"}, {"title": "Protocol and ports"},
+                            {"title": "Program"}, {"title": "Remote"}, {"title": "Profiles"}, {"title": "State"}, {"title": ""}, {"title": ""}],
+                "empty": "No rule shown: another choice, or Find, lists more.",
                 "actions": [{"form": "rule-add", "title": "Add a rule…"}, {"form": "find", "title": "Find…",
                              "values": {"words": q.words, "port": q.port, "direction": q.direction, "action": q.action}},
                             {"hook": "refresh", "args": [], "title": "Read again", "note": "reads the whole configuration now"}]}
+        return self.groups.table(base, rows, per_group=ROWS, notes=GROUP_NOTES)
 
     def _forms(self, snap: Snapshot) -> list[dict]:
         uac = "" if snap.elevated or self._elevated() else " " + UAC
         yes_no = [{"value": "on", "title": "on"}, {"value": "off", "title": "off"}]
         defaults = [{"value": "block", "title": "block"}, {"value": "allow", "title": "allow"},
                     {"value": "default", "title": "Windows' default"}]
-        return [
+        return [*self.groups.forms(),
             {"id": "rule-state", "hook": "set_rule", "title": "Turn a rule on or off",
              "fields": [{"name": "rule_id", "label": "Id", "type": "fixed"}, {"name": "enabled", "label": "Turned", "type": "fixed"},
                         {"name": "label", "label": "Rule", "type": "fixed"}],
@@ -759,6 +795,48 @@ class WindowsFirewallPlugin(Firewall):
              "confirm": {"title": "Make this network {category}?",
                          "words": "{label} is made {category}: the {category} profile's rules apply to it." + uac, "yes": "Make it so"}},
         ]
+
+
+def _expanded(program: str, windir: str = WINDIR) -> str:
+    """A program's path as Windows runs it, in lowercase: its variables for Windows' folder expanded
+    (%SystemRoot%\\system32\\svchost.exe -> c:\\windows\\system32\\svchost.exe)."""
+    p = str(program or "").strip().strip('"')
+    for var, value in (("%systemroot%", windir), ("%windir%", windir), ("%systemdrive%", windir[:2])):
+        if p.lower().startswith(var):
+            p = value + p[len(var):]
+    return p.lower()
+
+
+def sort_rule(r: WinRule, windir: str = WINDIR) -> Sorted:
+    """A Windows rule's own group, and why (the user: "groups, like system or application and then unassociated rules
+    not tied to a specific application or system process can be in an other"). Liminal's: an application's (Liminal's
+    apps). An app container's (a Microsoft Store app's): an application's, Windows' own when Windows signed its package
+    as the system's. A Windows service's, the System process', a program's in Windows' folder, and Windows' own rule
+    groups (a resource of Windows' for their name): the system's. Another program's: an application's. Tied to none of
+    these: other."""
+    program = (r.program or "").strip()
+    low = program.lower()
+    in_windows = _expanded(program, windir).startswith(windir.lower() + "\\")
+    if r.owned:
+        return Sorted("application", "Liminal's: made on the platform")
+    if r.package:
+        app = r.package.split("_")[0]
+        return Sorted("system", f"Windows' own app {app}") if r.package_system else Sorted("application", f"the app {app}")
+    if r.service:
+        if low not in ("", "any", "system") and not in_windows:
+            return Sorted("application", f"the service {r.service}, run by {program}")
+        return Sorted("system", f"the Windows service {r.service}")
+    if low == "system":
+        return Sorted("system", "the System process: Windows' kernel")
+    if low not in ("", "any"):
+        if in_windows:
+            return Sorted("system", f"{ntpath.basename(program)}, in Windows' folder")
+        return Sorted("application", f"the program {program}")
+    if r.owner:
+        return Sorted("application", "an app's own rule (a Microsoft Store app's)")
+    if r.source.startswith("@") and not r.source.startswith("@{"):
+        return Sorted("system", f"Windows' own rule group {r.group}" if r.group else "one of Windows' own rules")
+    return Sorted("other", "no program, service or app: its ports and addresses alone")
 
 
 PROTOCOL_WORDS = {"1": "ICMPv4", "2": "IGMP", "6": "TCP", "17": "UDP", "41": "IPv6", "47": "GRE", "58": "ICMPv6", "256": "any"}

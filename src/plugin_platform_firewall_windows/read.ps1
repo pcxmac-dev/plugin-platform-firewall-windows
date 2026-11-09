@@ -1,5 +1,7 @@
 # The whole configuration in one read (the Windows Firewall plugin's): the firewall profiles, the networks and their
-# category, every rule with its ports, program and remote addresses, and Microsoft Defender's state. Needs no rights:
+# category, every rule with its ports, program, service, app and remote addresses, and Microsoft Defender's state. A
+# rule's app (an app container's: a Microsoft Store app's) is its package family, named by its rule group's resource or
+# its own name, and said to be Windows' own when the package is signed as the system's. Needs no rights:
 # the rules come from the NetSecurity cmdlets (their unique Name is what a change names), their ports and programs from
 # the filters read in bulk, their remote addresses from the firewall's COM policy (the address filters need an
 # administrator), matched to each rule by its name, direction, action, program, protocol and local ports.
@@ -46,6 +48,16 @@ $ports = @{}
 foreach ($f in @(Get-NetFirewallPortFilter -All -ErrorAction SilentlyContinue)) { $ports[[string]$f.InstanceID] = $f }
 $apps = @{}
 foreach ($f in @(Get-NetFirewallApplicationFilter -All -ErrorAction SilentlyContinue)) { $apps[[string]$f.InstanceID] = $f }
+$services = @{}
+foreach ($f in @(Get-NetFirewallServiceFilter -All -ErrorAction SilentlyContinue)) { $services[[string]$f.InstanceID] = [string]$f.Service }
+$systemApps = @{}  # the app packages signed as Windows' own, by family name
+try { foreach ($p in @(Get-AppxPackage -ErrorAction Stop)) { if ([string]$p.SignatureKind -eq 'System') { $systemApps[[string]$p.PackageFamilyName] = $true } } } catch { }
+function FamilyOf($group, $name) {
+    # Microsoft.Windows.Photos_2024.11050.3002.0_x64__8wekyb3d8bbwe -> Microsoft.Windows.Photos_8wekyb3d8bbwe
+    if ($group -match '^@\{([^?}]+)') { $parts = $Matches[1] -split '_'; if ($parts.Count -ge 2) { return $parts[0] + '_' + $parts[-1] } }
+    if ($name -cmatch '^([A-Za-z0-9.\-]+_[a-z0-9]{13})(?=S-1-|-)') { return $Matches[1] }
+    return ''
+}
 $addresses = @{}  # an administrator reads every rule's remote addresses as they are
 if ($admin) { foreach ($f in @(Get-NetFirewallAddressFilter -All -ErrorAction SilentlyContinue)) { $addresses[[string]$f.InstanceID] = (@($f.RemoteAddress) | ForEach-Object { [string]$_ }) -join ',' } }
 $rules = foreach ($r in @(Get-NetFirewallRule)) {
@@ -57,6 +69,8 @@ $rules = foreach ($r in @(Get-NetFirewallRule)) {
     $remotePort = if ($pf) { (@($pf.RemotePort) | ForEach-Object { [string]$_ }) -join ',' } else { $null }
     $dir = if ($r.Direction.ToString() -eq 'Inbound') { 1 } else { 2 }
     $act = if ($r.Action.ToString() -eq 'Allow') { 1 } else { 0 }
+    $svc = $services[[string]$r.Name]
+    $family = FamilyOf ([string]$r.Group) ([string]$r.Name)
     $key = ([string]$r.DisplayName) + '|' + $dir + '|' + $act + '|' + (ProgramKey $program) + '|' + (ProtoNumber $protocol) + '|' + (PortsKey $local) + '|' + (ProfileMask $r.Profile.ToString()) + '|' + ($r.Enabled.ToString() -eq 'True')
     [pscustomobject]@{
         Id = [string]$r.Name; Name = [string]$r.DisplayName; Group = [string]$r.DisplayGroup; GroupSource = [string]$r.Group
@@ -65,6 +79,8 @@ $rules = foreach ($r in @(Get-NetFirewallRule)) {
         Remote = if ($addresses.ContainsKey([string]$r.Name)) { $addresses[[string]$r.Name] } elseif ($pf -and $remote.ContainsKey($key) -and -not $ambiguous.ContainsKey($key)) { $remote[$key] } else { $null }
         Description = [string]$r.Description
         Store = $r.PolicyStoreSourceType.ToString()
+        Service = if ($svc -and $svc -ne 'Any' -and $svc -ne '*') { $svc } else { '' }
+        Owner = [string]$r.Owner; Package = $family; PackageSystem = [bool]($family -and $systemApps.ContainsKey($family))
     }
 }
 $profiles = foreach ($p in @(Get-NetFirewallProfile)) {

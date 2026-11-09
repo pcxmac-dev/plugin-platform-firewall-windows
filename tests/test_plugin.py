@@ -156,14 +156,17 @@ def test_the_whole_configuration_is_read_once_kept_and_said():
     assert profiles["rows"][2][6]["values"] == {"profile": "Public", "enabled": "on", "inbound": "default", "outbound": "default", "notify": "on"}
     assert [c["value"] for c in rules["options"][0]["choices"]] == ["in-allow", "in-block", "out", "liminal", "off", "all"]
     assert rules["options"][0]["value"] == "in-allow" and rules["options"][0]["hook"] == "show_rules"
-    assert [text(r[0]) for r in rules["rows"]] == ["Delivery Optimization (TCP-In)", "Core Networking - Router Advertisement (ICMPv6-In)", "Game server"]
-    game = rules["rows"][2]
+    cells = [r["cells"] for r in rules["rows"]]  # 0.3.0: each row {cells, key, group, own, why}, in its group
+    assert [text(c[0]) for c in cells] == ["Delivery Optimization (TCP-In)", "Core Networking - Router Advertisement (ICMPv6-In)", "Game server"]
+    assert [r["group"] for r in rules["rows"]] == ["system", "system", "application"]
+    game = cells[2]
     assert game[3] == "TCP 27015-27030" and game[5] == "any" and game[9]["form"] == "rule-remove"  # not one of Windows' own
-    assert rules["rows"][0][9] == "–" and rules["rows"][1][3] == "not read" and rules["rows"][1][5] == "not read"
-    assert rules["rows"][0][8] == {"form": "rule-state", "title": "Turn off", "label": "Turn off Delivery Optimization (TCP-In)",
-                                   "values": {"rule_id": "DeliveryOptimization-TCP-In", "enabled": "off",
-                                              "label": "Delivery Optimization (TCP-In) (DeliveryOptimization-TCP-In)"}}
-    assert [a.get("form") or a.get("hook") for a in rules["actions"]] == ["rule-add", "find", "refresh"]
+    assert cells[0][9] == "–" and cells[1][3] == "not read" and cells[1][5] == "not read"
+    assert cells[0][8] == {"form": "rule-state", "title": "Turn off", "label": "Turn off Delivery Optimization (TCP-In)",
+                           "values": {"rule_id": "DeliveryOptimization-TCP-In", "enabled": "off",
+                                      "label": "Delivery Optimization (TCP-In) (DeliveryOptimization-TCP-In)"}}
+    assert [a.get("form") or a.get("hook") for a in rules["actions"]] == ["rule-add", "find", "refresh", "label-new"]
+    assert [(g["id"], g["count"]) for g in rules["groups"]] == [("system", 2), ("application", 1), ("other", 0)]
 
 
 def test_rules_are_found_and_shown_by_a_preset():

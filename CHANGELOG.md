@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 (2026-11-08)
+
+The rules in groups (the user: "for both firewalls, i need to have groups, like system or application and then
+unassociated rules not tied to a specific application or system process can be in an other, i can create labels, like
+system or application, as well and move the rules in to that"; "just use basic expansion like a (+) to open and close
+labels"). Every rule is sorted into System (Windows' own: a Windows service's, the System process', a program's in
+Windows' folder, Windows' own app packages and rule groups), Application (another program's, a Microsoft Store app's,
+Liminal's) or Other (tied to no program, service or app: ports and addresses alone), each saying why. The user's labels
+(New label…, Rename…, Remove…) and the rules moved into them or into another group are the library's (liminal-libs
+1.35.0 rulegroups), kept through the platform's login as FIREWALL_WINDOWS_GROUPS, never in the firewall: moving a rule
+changes nothing in it. The read gets each rule's service, its owner and its app's package (signed as Windows' own or
+not); Find looks in the service and the app too; the Rules table lists each group's first 100 rules. Needs
+liminal-libs>=1.35.0 and liminal-platform 0.11.0 to draw the groups.
+
 ## 0.2.2 (2026-11-08)
 
 Its icon is the one the user picked ("this one for windows firewall"): a brick wall in three dimensions with the globe
