@@ -4,7 +4,11 @@
 # its own name, and said to be Windows' own when the package is signed as the system's. Needs no rights:
 # the rules come from the NetSecurity cmdlets (their unique Name is what a change names), their ports and programs from
 # the filters read in bulk, their remote addresses from the firewall's COM policy (the address filters need an
-# administrator), matched to each rule by its name, direction, action, program, protocol and local ports.
+# administrator), matched to each rule by its name, direction, action, program, protocol and local ports. What names a
+# rule's service and program (0.4.0): each Windows service's display name, and for each program on disk its path as
+# spelled there (a rule may name it in lowercase), its product name and its description (the file's version information),
+# looked up only on this PC's own fixed drives and never for a file kept in the cloud only: nothing reached over the
+# network, nothing fetched.
 $protocols = @{ 'TCP' = 6; 'UDP' = 17; 'ANY' = 256; 'ICMPV4' = 1; 'ICMPV6' = 58 }
 function ProtoNumber($p) {
     $s = ([string]$p).Trim().ToUpper()
@@ -83,6 +87,45 @@ $rules = foreach ($r in @(Get-NetFirewallRule)) {
         Owner = [string]$r.Owner; Package = $family; PackageSystem = [bool]($family -and $systemApps.ContainsKey($family))
     }
 }
+$serviceNames = @{}  # a Windows service's short name (the one a rule names) -> its display name
+try { foreach ($s in @(Get-Service -ErrorAction SilentlyContinue)) { $serviceNames[[string]$s.Name] = [string]$s.DisplayName } } catch { }
+$named = @{}  # only the services the rules name
+foreach ($r in @($rules)) { $s = [string]$r.Service; if ($s -and -not $named.ContainsKey($s) -and $serviceNames.ContainsKey($s)) { $named[$s] = $serviceNames[$s] } }
+function OnDisk($full) {
+    # the path as spelled on disk: each folder's and the file's own name, looked up in the folder above it
+    try {
+        $full = [IO.Path]::GetFullPath($full)
+        $root = [IO.Path]::GetPathRoot($full)
+        $out = $root.ToUpper()
+        foreach ($part in $full.Substring($root.Length).Split([char]'\')) {
+            if ($part -eq '') { continue }
+            $hit = @([IO.Directory]::GetFileSystemEntries($out, $part))
+            if ($hit.Count -ne 1) { return $full }
+            $out = $hit[0]
+        }
+        return $out
+    } catch { return $full }
+}
+$programs = @{}  # each program the rules name that is on one of this PC's own fixed drives -> what names it
+$tried = @{}
+$fixed = @{}  # a drive -> whether it is one of this PC's own fixed drives (Windows' own table says: the drive is not asked)
+$cloud = 0x1000 -bor 0x40000 -bor 0x400000  # Offline, RecallOnOpen, RecallOnDataAccess: a file kept in the cloud only (OneDrive's)
+foreach ($r in @($rules)) {
+    $p = [string]$r.Program
+    if ($p -eq '' -or $p -eq 'Any' -or $p -eq 'System' -or $tried.ContainsKey($p)) { continue }
+    $tried[$p] = $true
+    try {
+        $full = [Environment]::ExpandEnvironmentVariables($p.Trim().Trim('"'))
+        if ($full -notmatch '^[A-Za-z]:\\') { continue }  # a share (\\server\...): not looked up
+        $drive = $full.Substring(0, 3).ToUpper()
+        if (-not $fixed.ContainsKey($drive)) { $fixed[$drive] = ((New-Object IO.DriveInfo $drive).DriveType -eq [IO.DriveType]::Fixed) }
+        if (-not $fixed[$drive]) { continue }  # a network drive, a removable one, a disc: not looked up
+        if (-not [IO.File]::Exists($full)) { continue }
+        if (([int][IO.File]::GetAttributes($full)) -band $cloud) { continue }  # reading its version would fetch it
+        $v = [Diagnostics.FileVersionInfo]::GetVersionInfo($full)
+        $programs[$p] = [pscustomobject]@{ Path = (OnDisk $full); Product = ([string]$v.ProductName).Trim(); Description = ([string]$v.FileDescription).Trim() }
+    } catch { }
+}
 $profiles = foreach ($p in @(Get-NetFirewallProfile)) {
     [pscustomobject]@{ Name = [string]$p.Name; Enabled = ($p.Enabled.ToString() -eq 'True'); Inbound = $p.DefaultInboundAction.ToString()
         Outbound = $p.DefaultOutboundAction.ToString(); Notify = $p.NotifyOnListen.ToString(); AllowInbound = $p.AllowInboundRules.ToString()
@@ -98,4 +141,5 @@ try {
     $defender = [pscustomobject]@{ Antivirus = [bool]$m.AntivirusEnabled; RealTime = [bool]$m.RealTimeProtectionEnabled
         Signatures = if ($m.AntivirusSignatureLastUpdated) { $m.AntivirusSignatureLastUpdated.ToString('s') } else { '' } }
 } catch { }
-[pscustomobject]@{ Profiles = @($profiles); Networks = @($networks); Rules = @($rules); Defender = $defender; Elevated = $admin }
+[pscustomobject]@{ Profiles = @($profiles); Networks = @($networks); Rules = @($rules); Defender = $defender; Elevated = $admin
+    Services = $named; Programs = $programs }

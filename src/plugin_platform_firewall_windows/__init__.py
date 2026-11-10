@@ -16,6 +16,16 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   program or a Microsoft Store app installed, Liminal's rules) or Other (no program, service or app: ports and addresses
   alone); the user's labels and moves kept through the platform's login (the library's rulegroups), never in Windows'
   firewall: no rule changes when it is moved.
+- Names (0.4.0; the user: "lets group by application under apps or system, try best to organize under system and
+  applications. Like system has 'core networking' or WSD or UPnP or RA Server or Remote Assistance or network discovery
+  or ... applications has like starcraft or edge"; "try to group the system by 'services'"; "also rules that are turned
+  off should be shown as well"): every System rule named by its service (Windows' own rule group, else its Windows
+  service, its program; Windows' own app packages, known by their publisher, by the name their rules carry, an earlier
+  version's left behind too), every Application rule by its application (its rule group, the group its program's
+  other rules carry, its app package's name, its install folder, else the name its rules carry: one heading for an
+  application's programs and versions), each name a heading of its own under its group (sort_rules); Windows' own rule
+  groups the system's even for a program under Program Files (Windows Media Player); the rules turned off listed too,
+  after those turned on.
 - Changes, each asked by a form and confirmed: a rule turned on or off, removed (never one of Windows' own: those are
   turned off instead), or made (in the rule group "Liminal"); a profile's firewall turned on or off, its default for
   what comes in or goes out, its notifications; a network made private or public. Turning a profile off, or letting
@@ -34,6 +44,7 @@ import os
 import re
 import threading
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,7 +54,7 @@ from liminal_libs.machines.plugin import CommandError
 from liminal_libs.machines.rulegroups import Sorted, key_of
 from liminal_libs.machines.windows import PowerShell, is_elevated, quote
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -52,11 +63,12 @@ PROFILE_NAMES = ("Domain", "Private", "Public")
 READ_SCRIPT = Path(__file__).with_name("read.ps1")
 READ_S = 60.0  # the configuration read again once it is this old
 FIRST_WAIT_S = 8.0  # how long the first status waits for the first read
-ROWS = 100  # rules listed at most in each group
+ROWS = 100  # rules listed at most under each service's or application's heading, and in each group for those with none
 WINDIR = (os.environ.get("SystemRoot") or r"C:\Windows").rstrip("\\")  # Windows' folder: its programs are the system's
 GROUP_NOTES = {
-    "system": "Windows' own: its services, the System process, its programs in Windows' folder, its app packages and rule groups",
-    "application": "a program or a Microsoft Store app installed, Liminal's rules too",
+    "system": ("Windows' own, by service: its rule groups, its services, the System process, its programs in Windows' "
+               "folder, its app packages"),
+    "application": "by application: a program or a Microsoft Store app installed, Liminal's rules too",
     "other": "tied to no program, service or app: ports and addresses alone",
 }
 RULE_FIELDS = ("$pf = $_ | Get-NetFirewallPortFilter; $af = $_ | Get-NetFirewallAddressFilter; "
@@ -64,10 +76,10 @@ RULE_FIELDS = ("$pf = $_ | Get-NetFirewallPortFilter; $af = $_ | Get-NetFirewall
                "Action = $_.Action.ToString(); Enabled = ($_.Enabled.ToString() -eq 'True'); Protocol = [string]$pf.Protocol; "
                "LocalPort = (@($pf.LocalPort) -join ','); RemoteAddress = (@($af.RemoteAddress) -join ','); "
                "Description = [string]$_.Description }")
-PRESETS = {  # the rules shown: (title, which)
-    "in-allow": ("Inbound allowed", lambda r: r.direction == "in" and r.action == "allow" and r.enabled),
-    "in-block": ("Inbound blocked", lambda r: r.direction == "in" and r.action == "block" and r.enabled),
-    "out": ("Outbound", lambda r: r.direction == "out" and r.enabled),
+PRESETS = {  # the rules shown: (title, which); those turned off too (0.4.0: "also rules that are turned off should be shown")
+    "in-allow": ("Inbound allowed", lambda r: r.direction == "in" and r.action == "allow"),
+    "in-block": ("Inbound blocked", lambda r: r.direction == "in" and r.action == "block"),
+    "out": ("Outbound", lambda r: r.direction == "out"),
     "liminal": ("Liminal's", lambda r: r.group == GROUP),
     "off": ("Turned off", lambda r: not r.enabled),
     "all": ("All", lambda r: True),
@@ -110,7 +122,10 @@ class WinRule:
     matches. A port filter or remote addresses Windows did not give a non-administrator are None (not read). What it is
     tied to (0.3.0): its program, its service (a Windows service's short name), its owner (an app container's: a
     Microsoft Store app's rule) and its app's package family, `package_system` when Windows signed that package as its
-    own; `source` is its rule group as Windows keeps it (a resource string for Windows' own)."""
+    own; `source` is its rule group as Windows keeps it (a resource string for Windows' own). What names them (0.4.0):
+    its service's display name (`service_name`), and for a program on disk its product name, its description and its
+    path as spelled there (`on_disk`: a rule may name it in lowercase); "" when not read (a read before 0.4.0, a
+    program no longer there)."""
     id: str
     name: str
     group: str = ""
@@ -130,6 +145,10 @@ class WinRule:
     owner: str = ""
     package: str = ""
     package_system: bool = False
+    service_name: str = ""
+    product: str = ""
+    file_description: str = ""
+    on_disk: str = ""
 
     @property
     def owned(self) -> bool:
@@ -189,20 +208,33 @@ def _text(v) -> str | None:
     return None if v is None else str(v)
 
 
+def _mapping(value) -> dict:
+    """A map the read gives (a service's or a program's, 0.4.0), by its key in lowercase: Windows' names are in any
+    case; {} when the read has none (one made before 0.4.0)."""
+    return {str(k).casefold(): v for k, v in value.items()} if isinstance(value, dict) else {}
+
+
 def parse_snapshot(data: dict, at: float, took: float) -> Snapshot:
-    """read.ps1's answer as a Snapshot."""
+    """read.ps1's answer as a Snapshot (a read without the services' and programs' names, before 0.4.0, as well)."""
     rules = []
+    services, programs = _mapping(data.get("Services")), _mapping(data.get("Programs"))
     for r in data.get("Rules") or []:
         group = str(r.get("Group") or "")
         source = str(r.get("GroupSource") or "")
+        service, program = str(r.get("Service") or ""), str(r.get("Program") or "Any")
+        info = programs.get(program.casefold())
+        info = info if isinstance(info, dict) else {}
         rules.append(WinRule(
             id=str(r.get("Id") or ""), name=str(r.get("Name") or ""), group=group, builtin=source.startswith("@"),
             enabled=bool(r.get("Enabled")), direction="out" if str(r.get("Direction")) == "Outbound" else "in",
             action="block" if str(r.get("Action")) == "Block" else "allow", profiles=str(r.get("Profile") or "Any"),
-            program=str(r.get("Program") or "Any"), protocol=_text(r.get("Protocol")), local=_text(r.get("LocalPort")),
+            program=program, protocol=_text(r.get("Protocol")), local=_text(r.get("LocalPort")),
             remote_ports=_text(r.get("RemotePort")), remote=_text(r.get("Remote")), description=str(r.get("Description") or ""),
-            source=source, service=str(r.get("Service") or ""), owner=str(r.get("Owner") or ""), package=str(r.get("Package") or ""),
-            package_system=bool(r.get("PackageSystem"))))
+            source=source, service=service, owner=str(r.get("Owner") or ""), package=str(r.get("Package") or ""),
+            package_system=bool(r.get("PackageSystem")),
+            service_name=str((services.get(service.casefold()) if service else "") or "").strip(),
+            product=str(info.get("Product") or "").strip(), file_description=str(info.get("Description") or "").strip(),
+            on_disk=str(info.get("Path") or "").strip()))
     profiles = tuple({"name": str(p.get("Name")), "enabled": bool(p.get("Enabled")), "inbound": str(p.get("Inbound") or ""),
                       "outbound": str(p.get("Outbound") or ""), "notify": str(p.get("Notify") or ""),
                       "allowInbound": str(p.get("AllowInbound") or ""), "logBlocked": str(p.get("LogBlocked") or ""),
@@ -590,19 +622,32 @@ class WindowsFirewallPlugin(Firewall):
         return {"said": f"showing {PRESETS.get(preset, ('found',))[0].lower()}", "ok": True}
 
     def sorted_rules(self) -> dict[str, Sorted]:
-        """Every rule read, by its key (its id's), with its own group (sort_rule): what a move checks."""
-        snap = self._rt.snap
-        return {key_of(r.id): sort_rule(r) for r in (snap.rules if snap else ())}
+        """Every rule read, by its key (its id's), with its own group and name (sort_rules): what a move checks."""
+        return {key_of(rid): s for rid, s in self._sorted(self._rt.snap).items()}
 
-    def rules_shown(self) -> tuple[Query, list[WinRule]]:
-        """The rules the table lists: those the query matches; for a port, the rules naming it first, then ranges, then
-        every port (a rule for every port covers it too, for its program)."""
+    def _sorted(self, snap: Snapshot | None) -> dict[str, Sorted]:
+        """`snap`'s rules by their id, each with its own group and name (sort_rules): worked out once for each read."""
+        if snap is None:
+            return {}
+        with self._rt.lock:
+            done = self._rt.sorted
+        if done is not None and done[0] is snap:
+            return done[1]
+        found = sort_rules(snap.rules)
+        with self._rt.lock:
+            if self._rt.snap is snap:
+                self._rt.sorted = (snap, found)
+        return found
+
+    def rules_shown(self, snap: Snapshot | None = None) -> tuple[Query, list[WinRule]]:
+        """The rules the table lists: those the query matches (those turned off too, 0.4.0), each turned on before those
+        turned off; for a port, the rules naming it first, then ranges, then every port (a rule for every port covers it
+        too, for its program)."""
         with self._rt.lock:
             q = self._rt.query
-        snap = self._rt.snap
+        snap = snap if snap is not None else self._rt.snap
         found = [r for r in (snap.rules if snap else ()) if q.matches(r)]
-        if q.port:
-            found.sort(key=lambda r: r.cover_rank(q.port))
+        found.sort(key=lambda r: (r.cover_rank(q.port) if q.port else 0, not r.enabled))
         return q, found
 
     # -- what the platform's page shows ---------------------------------------------------------------------
@@ -699,28 +744,36 @@ class WindowsFirewallPlugin(Firewall):
                             {"title": "Notifications"}, {"title": "Used by"}, {"title": ""}], "rows": rows}
 
     def _rules_table(self) -> dict:
-        """The rules shown, in their groups (0.3.0): System, Application, Other and the user's labels, each listing its
-        first ROWS; a rule's group found by sort_rule, or where the user moved it."""
-        q, found = self.rules_shown()
+        """The rules shown, in their groups (0.3.0): System, Application, Other and the user's labels; in System and
+        Application a heading for each service and application (0.4.0), each listing its first ROWS; a rule's group and
+        name found by sort_rules, or the group where the user moved it. A rule turned off is listed too, after those
+        turned on, marked for the page to show it dimmed."""
+        snap = self._rt.snap
+        q, found = self.rules_shown(snap)
+        own = self._sorted(snap)
         rows = []
         for r in found:
             label = f"{r.name} ({r.id})"
             tied = (f"service {r.service}" if r.service else f"app {r.package.split('_')[0]}" if r.package
                     else "an app's own rule" if r.owner and r.program in ("", "Any") else None)
-            rows.append((key_of(r.id), sort_rule(r), [cell(r.name, r.group or None), r.direction, r.action, ports_said(r), cell(r.program, tied),
-                         "not read" if r.remote is None else ("any" if r.remote in ("*", "Any") else r.remote), r.profiles,
-                         "on" if r.enabled else "off",
-                         {"form": "rule-state", "title": "Turn off" if r.enabled else "Turn on",
-                          "values": {"rule_id": r.id, "enabled": "off" if r.enabled else "on", "label": label},
-                          "label": f"Turn {'off' if r.enabled else 'on'} {r.name}"},
-                         {"form": "rule-remove", "title": "Remove", "values": {"rule_id": r.id, "label": label}, "label": f"Remove {r.name}"}
-                         if not r.builtin else "–"]))
-        choices = [{"value": k, "title": t, "note": plural(sum(1 for x in (self._rt.snap.rules if self._rt.snap else ()) if f(x)), "rule")}
-                   for k, (t, f) in PRESETS.items()]
+            cells = [cell(r.name, r.group or None), r.direction, r.action, ports_said(r), cell(r.program, tied),
+                     "not read" if r.remote is None else ("any" if r.remote in ("*", "Any") else r.remote), r.profiles,
+                     "on" if r.enabled else "off",
+                     {"form": "rule-state", "title": "Turn off" if r.enabled else "Turn on",
+                      "values": {"rule_id": r.id, "enabled": "off" if r.enabled else "on", "label": label},
+                      "label": f"Turn {'off' if r.enabled else 'on'} {r.name}"},
+                     {"form": "rule-remove", "title": "Remove", "values": {"rule_id": r.id, "label": label}, "label": f"Remove {r.name}"}
+                     if not r.builtin else "–"]
+            s = own.get(r.id) or sort_rule(r)
+            rows.append((key_of(r.id), s, cells) if r.enabled else (key_of(r.id), s, cells, {"off": True}))
+        every = snap.rules if snap else ()
+        choices = [{"value": k, "title": t, "note": counted([x for x in every if f(x)])} for k, (t, f) in PRESETS.items()]
         if q.found:
             choices.append({"value": "found", "title": "Found", "note": q.words_said()})
+        off = sum(1 for r in found if not r.enabled)
         base = {"title": "Rules",
-                "note": f"{len(found)} shown: {q.words_said()}; moving a rule to another group changes nothing in the firewall",
+                "note": (f"{len(found)} shown{f' ({off} turned off)' if 0 < off < len(found) else ''}: {q.words_said()}; "
+                         "moving a rule to another group changes nothing in the firewall"),
                 "options": [{"title": "Rules shown", "hook": "show_rules", "value": "found" if q.found else q.preset, "choices": choices}],
                 "columns": [{"title": "Rule"}, {"title": "Direction"}, {"title": "Action"}, {"title": "Protocol and ports"},
                             {"title": "Program"}, {"title": "Remote"}, {"title": "Profiles"}, {"title": "State"}, {"title": ""}, {"title": ""}],
@@ -807,36 +860,377 @@ def _expanded(program: str, windir: str = WINDIR) -> str:
     return p.lower()
 
 
-def sort_rule(r: WinRule, windir: str = WINDIR) -> Sorted:
-    """A Windows rule's own group, and why (the user: "groups, like system or application and then unassociated rules
-    not tied to a specific application or system process can be in an other"). Liminal's: an application's (Liminal's
-    apps). An app container's (a Microsoft Store app's): an application's, Windows' own when Windows signed its package
-    as the system's. A Windows service's, the System process', a program's in Windows' folder, and Windows' own rule
-    groups (a resource of Windows' for their name): the system's. Another program's: an application's. Tied to none of
-    these: other."""
+# -- each rule's group and name ------------------------------------------------------------------------------------
+
+GUID = re.compile(r"\{?[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\}?", re.I)
+PACKAGE_FOLDER = re.compile(r"([A-Za-z0-9.\-]+)_[^_]*_[^_]*_[^_]*_([a-z0-9]{13})", re.I)  # Name_Version_Arch_Resource_Publisher
+FAMILY_FOLDER = re.compile(r"([A-Za-z0-9.\-]+)_([a-z0-9]{13})", re.I)  # Name_Publisher: Windows' own apps' (SystemApps\...)
+WINDOWS_PUBLISHER = "cw5n1h2txyewy"  # the publisher id of Windows' own app packages (Microsoft Windows'), ending their family
+FOLDERS = (  # a path's variables for the folders programs are installed in (the user's own: any user's)
+    ("%programfiles(x86)%", r"C:\Program Files (x86)"), ("%programfiles%", r"C:\Program Files"),
+    ("%programw6432%", r"C:\Program Files"), ("%programdata%", r"C:\ProgramData"), ("%allusersprofile%", r"C:\ProgramData"),
+    ("%localappdata%", r"C:\Users\*\AppData\Local"), ("%appdata%", r"C:\Users\*\AppData\Roaming"), ("%userprofile%", r"C:\Users\*"))
+VENDORS = frozenset({  # an install folder holding a vendor's several products: a program is named by the folder inside it
+    "microsoft", "microsoft shared", "common files", "google", "jetbrains", "dassault systemes", "dell", "vmware",
+    "nvidia corporation", "intel", "intel corporation", "amd", "adobe", "autodesk", "oracle", "apple", "hp", "lenovo",
+    "asus", "logitech", "razer", "corsair", "realtek", "electronic arts", "ea games", "epic games", "origin games", "ubisoft",
+    "blizzard entertainment", "modifiablewindowsapps"})
+LIBRARIES = (  # a launcher's library of applications, each in a folder of its own inside it: that folder names it
+    ("steamapps", "common"), ("gog galaxy", "games"), ("ubisoft game launcher", "games"), ("jetbrains", "toolbox", "apps"),
+    ("xboxgames",))
+WINDOWS_PROGRAM_FILES = frozenset({  # Windows' own components installed under Program Files: a resource in them is Windows'
+    "windows media player", "windows defender", "windows defender advanced threat protection", "windows mail",
+    "windows photo viewer", "windows nt", "windows portable devices", "windows sidebar", "windows security",
+    "windows journal", "windows multimedia platform", "internet explorer", "windowspowershell"})
+
+
+def readable(text) -> bool:
+    """Whether a name Windows gave (a rule group, a rule's name) reads as words: not empty, not a resource it did not
+    resolve (@FirewallAPI.dll,-28502; @{Package?ms-resource://...}; ms-resource:AppDisplayName), not a bare GUID
+    ({00000000-1111-2222-3333-...})."""
+    t = str(text or "").strip()
+    return bool(t) and not t.startswith("@") and not t.casefold().startswith("ms-resource:") and not GUID.fullmatch(t)
+
+
+def windows_package(family: str) -> bool:
+    """Whether an app package family (Name_Publisher) is one of Windows' own: published by Microsoft Windows (its
+    publisher id cw5n1h2txyewy), signed as the system's or not, installed or an earlier version's left behind."""
+    return "_" in str(family or "") and str(family).rsplit("_", 1)[1].casefold() == WINDOWS_PUBLISHER
+
+
+def _components(path: str, windir: str = WINDIR) -> list[str]:
+    """A path's folders and file, its variables expanded (Windows' folder, the folders programs are installed in)."""
+    p = str(path or "").strip().strip('"').replace("/", "\\")
+    low = p.lower()
+    for var, value in (("%systemroot%", windir), ("%windir%", windir), ("%systemdrive%", windir[:2]), *FOLDERS):
+        if low.startswith(var):
+            p = value + p[len(var):]
+            break
+    return [c for c in p.split("\\") if c]
+
+
+def windows_resource(source: str, windir: str = WINDIR) -> bool:
+    """Whether a rule group as Windows keeps it (WinRule.source) is a resource of Windows' own: "@<file>,-<number>" with
+    the file a bare name (Windows looks it up in its own folder: @FirewallAPI.dll,-25000, @peerdistsh.dll,-1), a path in
+    Windows' folder (@%SystemRoot%\\system32\\vmms.exe,-1), or a path in one of Windows' own components installed under
+    Program Files or Program Files (x86) (@%ProgramFiles%\\Windows Media Player\\wmploc.dll,-1). Not a program's own
+    resource anywhere else (@C:\\Program Files\\Vendor\\app.dll,-1), an app package's (@{...}), or a group's plain name."""
+    s = str(source or "").strip()
+    if not s.startswith("@") or s.startswith("@{"):
+        return False
+    m = re.fullmatch(r"@(.+?)(?:,\s*-?\d+)?", s)
+    file = (m.group(1) if m else "").strip().strip('"')
+    if not file:
+        return False
+    if not any(c in file for c in "\\/:"):
+        return True
+    parts = [c.casefold() for c in _components(file, windir)]
+    home = [c.casefold() for c in _components(windir, windir)]
+    if len(parts) > len(home) and parts[:len(home)] == home:
+        return True
+    return len(parts) > 3 and parts[1] in ("program files", "program files (x86)") and parts[2] in WINDOWS_PROGRAM_FILES
+
+
+def package_of(program: str, windir: str = WINDIR) -> tuple[str, str]:
+    """For a program in an app package's folder (...\\WindowsApps\\Name_Version_Arch_Resource_Publisher\\..., or one of
+    Windows' own apps' ...\\SystemApps\\Name_Publisher\\...): its package family (Name_Publisher) and the family's own
+    name part; ("", "") for any other program."""
+    parts = _components(program, windir)
+    for i in range(len(parts) - 2):
+        if parts[i].casefold() in ("windowsapps", "systemapps"):
+            m = PACKAGE_FOLDER.fullmatch(parts[i + 1]) or FAMILY_FOLDER.fullmatch(parts[i + 1])
+            if m:
+                return f"{m.group(1)}_{m.group(2)}", m.group(1)
+    return "", ""
+
+
+def _install_at(parts: list[str]) -> int | None:
+    """Where in a path's folders the one a program is installed in is (install_folder); None for none."""
+    low = [c.casefold() for c in parts]
+    start = next((i + len(m) for i in range(len(low)) for m in LIBRARIES if tuple(low[i:i + len(m)]) == m), None)
+    if start is None and len(low) > 2 and low[1] in ("program files", "program files (x86)", "programdata"):
+        if low[1:3] == ["programdata", "package cache"]:  # installers kept for repairs: none is installed there
+            return None
+        start = 2
+    if start is None and len(low) > 5 and low[1] == "users" and low[3] == "appdata" and low[4] in ("local", "roaming"):
+        if low[4:6] == ["local", "temp"]:  # a temporary folder: no program is installed there
+            return None
+        start = 6 if low[4] == "local" and low[5] == "programs" else 5
+    if start is None or start >= len(parts) - 1:
+        return None
+    while start + 1 < len(parts) - 1 and (low[start] in VENDORS or low[start + 1].startswith(low[start] + " ")):
+        start += 1
+    return None if low[start] == "windowsapps" else start  # an app's alias (...\Microsoft\WindowsApps\x.exe): no folder of its own
+
+
+def install_folder(program: str, windir: str = WINDIR) -> str:
+    """The folder a program is installed in, by its name as the path spells it: the one under Program Files, Program
+    Files (x86), ProgramData, or a user's AppData\\Local\\Programs, AppData\\Local or AppData\\Roaming (C:\\Program Files
+    (x86)\\Steam\\bin\\helper.exe: Steam), one deeper when that one is a vendor's holding several products (C:\\Program
+    Files\\Google\\Chrome\\...: Chrome) or the one inside starts with its name (Contoso\\Contoso Paint\\...); an
+    application's own in a launcher's library (LIBRARIES: ...\\steamapps\\common\\<game>\\..., ...\\GOG Galaxy\\Games\\
+    <game>\\..., ...\\Ubisoft Game Launcher\\games\\<game>\\..., ...\\JetBrains\\Toolbox\\apps\\<IDE>\\..., the Xbox
+    app's ...\\XboxGames\\<game>\\...). "" for a program in none of them, right in one, or in a temporary folder
+    (AppData\\Local\\Temp) or the installers' cache (ProgramData\\Package Cache)."""
+    parts = _components(program, windir)
+    at = _install_at(parts)
+    return "" if at is None else parts[at]
+
+
+def _key(parts) -> str:
+    """A path's folders as a key: in lowercase, a user's own folder as any user's (C:\\Users\\someone: c:\\users\\*)."""
+    low = [c.casefold() for c in parts]
+    if len(low) > 2 and low[1] == "users":
+        low[2] = "*"
+    return "\\".join(low)
+
+
+def _home(program: str, windir: str = WINDIR) -> str:
+    """Where a program lives, as a key (_key): the path of the folder it is installed in (install_folder), else of the
+    folder holding it; "" for a bare file name."""
+    parts = _components(program, windir)
+    at = _install_at(parts)
+    return _key(parts[:at + 1]) if at is not None else _key(parts[:-1]) if len(parts) > 1 else ""
+
+
+def _stem(family: str) -> str:
+    """An app package family without the numbers in its name, by which its versions are known: Windows' own parts get a
+    new family with each update (MicrosoftWindows.10000001.Sample_cw5n1h2txyewy, then
+    MicrosoftWindows.20000002.Sample_cw5n1h2txyewy: microsoftwindows.sample_cw5n1h2txyewy)."""
+    name, _, publisher = str(family).casefold().rpartition("_")
+    return ".".join(p for p in name.split(".") if not p.isdecimal()) + "_" + publisher
+
+
+def families_of(rules, windir: str = WINDIR) -> dict[str, str]:
+    """Each app package family's name as its own rules carry it (their rule group read as words, the one most of them
+    carry), by the family in lowercase: what names an app's rules for its programs, whose own group is a GUID. A family
+    whose rules carry none (an earlier version's left behind: Windows no longer reads its group, a resource of a
+    package it no longer has) is named as the family of the same publisher and the same name but for its numbers
+    (_stem) is, when one is."""
+    seen: dict[str, Counter] = {}
+    every: set[str] = set()
+    for r in rules:
+        family = (r.package or package_of(r.program, windir)[0]).casefold()
+        if not family:
+            continue
+        every.add(family)
+        if not r.owned and readable(r.group):
+            seen.setdefault(family, Counter())[r.group] += 1
+    named = {f: c.most_common(1)[0][0] for f, c in seen.items()}
+    stems: dict[str, Counter] = {}
+    for f, c in seen.items():
+        stems.setdefault(_stem(f), Counter()).update(c)
+    for f in sorted(every - set(named)):
+        if _stem(f) in stems:
+            named[f] = stems[_stem(f)].most_common(1)[0][0]
+    return named
+
+
+@dataclass(frozen=True)
+class Names:
+    """What the read taken whole knows that names a rule (sort_rules), each by a key in lowercase: an app package
+    family's name as its rules carry it (`families`: families_of); the rule group the other rules for a program carry
+    (`programs`, by its path: _key), and the one group the rules for the programs in a folder carry (`folders`, by the
+    folder: _home); the name the rules of an app package (by its family) or of the programs in a folder outside the
+    install folders (by the folder) carry (`units`: their own names, else their programs' product names). Empty for a
+    rule sorted alone."""
+    families: dict = field(default_factory=dict)
+    programs: dict = field(default_factory=dict)
+    folders: dict = field(default_factory=dict)
+    units: dict = field(default_factory=dict)
+
+
+def _unbracketed(name: str) -> str:
+    """A rule's name without the part in brackets at its end (Contoso Photos (Inbound): Contoso Photos)."""
+    return re.sub(r"\s*\([^()]*\)\s*$", "", name).strip() or name.strip()
+
+
+def _own_name(r: WinRule) -> str:
+    """A rule's own name as an application's, without the part in brackets at its end (Contoso Quest (TCP-In): Contoso
+    Quest); "" for one that does not read as words (readable) or carries an identifier or a path (TCP Query
+    User{...}C:\\...)."""
+    name = _unbracketed(str(r.name or ""))
+    return name if readable(name) and not GUID.search(name) and not re.search(r"[A-Za-z]:\\|\\\\", name) else ""
+
+
+def _system_name(r: WinRule, program: str, windir: str, names: Names) -> str:
+    """A System rule's service, as its heading shows it: Windows' rule group when it reads as words; for one of Windows'
+    own app packages (an app's own rule, or a program in its folder), the name the family's rules carry (families_of),
+    else Windows' own apps; its Windows service's display name (its short name in a read before 0.4.0); System process;
+    its program's description, else its file name."""
+    if readable(r.group):
+        return r.group
+    family = r.package or (package_of(program, windir)[0] if program.lower() not in ("", "any", "system") else "")
+    if family:
+        if names.families.get(family.casefold()):
+            return names.families[family.casefold()]
+        if (r.package and r.package_system) or windows_package(family):
+            return "Windows' own apps"
+    if r.service:
+        return r.service_name or r.service
+    low = program.lower()
+    if low == "system":
+        return "System process"
+    if low not in ("", "any"):
+        return r.file_description or ntpath.basename(r.on_disk or program)
+    return ""
+
+
+def _application_name(r: WinRule, program: str, windir: str, names: Names) -> str:
+    """An Application rule's application, as its heading shows it: Liminal for Liminal's rules; its rule group when it
+    reads as words; for a program, the group its other rules carry; in an app package's folder, the name its family's
+    rules carry, else the one its rules carry (their own names, else their programs' product names: Names.units); in an
+    install folder, the group its folder's other programs' rules carry, else the folder's name (install_folder);
+    elsewhere, the group or the name its folder's rules carry; else its own name, its product name, its file name. For
+    an app's own rule with no program: the name its family's rules carry, else its own name read as words without the
+    part in brackets, else the family's own name part. Each fallback decided for the family or the folder in
+    sort_rules, not for each program file: one name for an application's programs and versions."""
+    if r.owned:
+        return "Liminal"
+    if readable(r.group):
+        return r.group
+    if program.lower() not in ("", "any", "system"):
+        path = r.on_disk or program
+        carried = names.programs.get(_key(_components(program, windir)))
+        if carried:
+            return carried
+        family, part = package_of(path, windir)
+        if family:
+            f = family.casefold()
+            return names.families.get(f) or names.units.get(f) or _own_name(r) or r.product or part
+        home, folder = _home(path, windir), install_folder(path, windir)
+        if folder:
+            return names.folders.get(home) or folder
+        return (names.folders.get(home) or names.units.get(home) or _own_name(r) or r.product
+                or ntpath.basename(path))
+    if r.package or r.owner:
+        f = r.package.casefold()
+        return (names.families.get(f) or names.units.get(f) if f else "") or _own_name(r) or r.package.split("_")[0]
+    return ""
+
+
+def sort_rule(r: WinRule, windir: str = WINDIR, names: Names | None = None) -> Sorted:
+    """A Windows rule's own group, why, and its name in the group (the user: "groups, like system or application and then
+    unassociated rules not tied to a specific application or system process can be in an other"; 0.4.0: "try best to
+    organize under system and applications"; "try to group the system by 'services'"). Liminal's: an application's
+    (Liminal's apps). An app container's (a Microsoft Store app's): an application's, Windows' own when its package is
+    (signed as the system's, or published by Microsoft Windows: windows_package, an earlier version's left behind too).
+    A Windows service's, the System process', a program's in Windows' folder or in the folder of one of Windows' own app
+    packages, and Windows' own rule groups (a resource of Windows' own for their name: windows_resource), even for a
+    program under Program Files (Windows Media Player's): the system's. Another program's: an application's. Tied to
+    none of these: other. A System rule is named by its service (_system_name), an Application rule by its application
+    (_application_name); `names` is what the read taken whole knows (sort_rules); an Other rule has no name."""
     program = (r.program or "").strip()
     low = program.lower()
     in_windows = _expanded(program, windir).startswith(windir.lower() + "\\")
+    windows_group = windows_resource(r.source, windir)
+    known = names if names is not None else Names()
+
+    def system(why: str) -> Sorted:
+        return Sorted("system", why, _system_name(r, program, windir, known))
+
+    def application(why: str) -> Sorted:
+        return Sorted("application", why, _application_name(r, program, windir, known))
+
     if r.owned:
-        return Sorted("application", "Liminal's: made on the platform")
+        return application("Liminal's: made on the platform")
     if r.package:
         app = r.package.split("_")[0]
-        return Sorted("system", f"Windows' own app {app}") if r.package_system else Sorted("application", f"the app {app}")
+        return system(f"Windows' own app {app}") if r.package_system or windows_package(r.package) else application(f"the app {app}")
     if r.service:
-        if low not in ("", "any", "system") and not in_windows:
-            return Sorted("application", f"the service {r.service}, run by {program}")
-        return Sorted("system", f"the Windows service {r.service}")
+        if low not in ("", "any", "system") and not in_windows and not windows_group:
+            return application(f"the service {r.service}, run by {program}")
+        return system(f"the Windows service {r.service}")
     if low == "system":
-        return Sorted("system", "the System process: Windows' kernel")
+        return system("the System process: Windows' kernel")
     if low not in ("", "any"):
         if in_windows:
-            return Sorted("system", f"{ntpath.basename(program)}, in Windows' folder")
-        return Sorted("application", f"the program {program}")
+            return system(f"{ntpath.basename(program)}, in Windows' folder")
+        if windows_group:  # Windows' own, its program under Program Files
+            return system((f"Windows' own rule group {r.group}" if r.group else "one of Windows' own rules")
+                          + f", for {ntpath.basename(program)}")
+        family, part = package_of(program, windir)
+        if windows_package(family):  # a program in the folder of one of Windows' own app packages, under Program Files
+            return system(f"{ntpath.basename(program)}, of Windows' own app {part}")
+        return application(f"the program {program}")
     if r.owner:
-        return Sorted("application", "an app's own rule (a Microsoft Store app's)")
-    if r.source.startswith("@") and not r.source.startswith("@{"):
-        return Sorted("system", f"Windows' own rule group {r.group}" if r.group else "one of Windows' own rules")
+        return application("an app's own rule (a Microsoft Store app's)")
+    if windows_group:
+        return system(f"Windows' own rule group {r.group}" if r.group else "one of Windows' own rules")
     return Sorted("other", "no program, service or app: its ports and addresses alone")
+
+
+def _spellings(names) -> dict[str, str]:
+    """Each name's one spelling, by the name in lowercase: one with capitals over one all in lowercase, then the one
+    most given, then the one given first."""
+    given = Counter(names)
+    best: dict[str, str] = {}
+    for n in given:
+        b = best.get(n.casefold())
+        if b is None or (n != n.lower(), given[n]) > (b != b.lower(), given[b]):
+            best[n.casefold()] = n
+    return best
+
+
+def _names_of(rules, first: dict, windir: str) -> Names:
+    """What the read taken whole knows that names its Application rules (Names), from `first`, each rule's group."""
+    carried: dict[str, Counter] = {}  # a program -> the groups its rules carry
+    held: dict[str, Counter] = {}  # a folder -> the groups its programs' rules carry
+    owns: dict[str, Counter] = {}  # an app package family or a folder outside the install folders -> its rules' own names
+    products: dict[str, Counter] = {}  # -> its programs' product names
+    for r in rules:
+        program = (r.program or "").strip()
+        if first[r.id].group != "application" or r.owned:
+            continue
+        has_program = program.lower() not in ("", "any", "system")
+        path = r.on_disk or program
+        family = package_of(path, windir)[0] if has_program else r.package
+        home = _home(path, windir) if has_program and not family else ""
+        if readable(r.group):
+            if has_program:
+                carried.setdefault(_key(_components(program, windir)), Counter())[r.group] += 1
+            if home:
+                held.setdefault(home, Counter())[r.group] += 1
+            continue
+        unit = family.casefold() or (home if not install_folder(path, windir) else "")
+        if unit:
+            if _own_name(r):
+                owns.setdefault(unit, Counter())[_own_name(r)] += 1
+            if r.product:
+                products.setdefault(unit, Counter())[r.product] += 1
+    units = {u: c.most_common(1)[0][0] for u, c in products.items()}
+    units.update({u: c.most_common(1)[0][0] for u, c in owns.items()})  # their own names before their products'
+    return Names(families_of(rules, windir), {k: c.most_common(1)[0][0] for k, c in carried.items()},
+                 {k: next(iter(c)) for k, c in held.items() if len({g.casefold() for g in c}) == 1}, units)
+
+
+def sort_rules(rules, windir: str = WINDIR) -> dict[str, Sorted]:
+    """Every rule's own group, why and name (sort_rule), by its id, the read taken whole (_names_of): an app package's
+    name as its family's own rules carry it, and as an earlier version's family's (families_of); a program's rules with
+    no group of their own named by the group its other rules, or its folder's other programs' rules, carry; an app
+    package's or an uninstalled program's name decided for the family or the folder, so its programs and versions are
+    one heading; and each name spelled one way for all its rules (_spellings: a rule may write its program's path in
+    lowercase, c:\\program files (x86)\\contoso quest\\quest.exe, where the program on disk, another rule's path, or the
+    rules' own names, Contoso Quest (TCP-In), spell it Contoso Quest)."""
+    rules = list(rules)
+    first = {r.id: sort_rule(r, windir) for r in rules}  # the groups: they do not hang on the names
+    names = _names_of(rules, first, windir)
+    found = {r.id: sort_rule(r, windir, names) for r in rules}
+    offered = [s.name for s in found.values() if s.name]
+    for r in rules:  # a name all in lowercase (from a path a rule writes so), as the rules' own names spell it
+        n, own = found[r.id].name, str(r.name or "").strip()
+        if n and n == n.lower() and own[:len(n)].casefold() == n.casefold() and not own[len(n):len(n) + 1].isalnum():
+            offered.append(own[:len(n)])  # starcraft ii: StarCraft II; contoso saga: Contoso Saga Retail's Contoso Saga
+    spelled = _spellings(offered)
+    return {rid: s if spelled.get(s.name.casefold(), s.name) == s.name else Sorted(s.group, s.why, spelled[s.name.casefold()])
+            for rid, s in found.items()}
+
+
+def counted(rules) -> str:
+    """How many rules, and how many of them are turned off when some are and some are not: 12 rules, 3 turned off."""
+    rules = list(rules)
+    off = sum(1 for r in rules if not r.enabled)
+    return plural(len(rules), "rule") + (f", {off} turned off" if 0 < off < len(rules) else "")
 
 
 PROTOCOL_WORDS = {"1": "ICMPv4", "2": "IGMP", "6": "TCP", "17": "UDP", "41": "IPv6", "47": "GRE", "58": "ICMPv6", "256": "any"}
@@ -867,6 +1261,7 @@ class _Runtime:
     error: str = ""
     reader: threading.Thread | None = None
     query: Query = field(default_factory=Query)
+    sorted: tuple | None = None  # (the Snapshot, its rules' Sorted by id): sort_rules once for each read
 
 
 MACHINE = WindowsFirewallPlugin()

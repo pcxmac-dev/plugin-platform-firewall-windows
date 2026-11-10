@@ -40,17 +40,19 @@ BUILTINS = [
 
 class FakeWindows:
     """Answers powershell.exe: the whole configuration's read, the base's scripts, and every change, applied to its own
-    state; records every script."""
+    state; records every script. `services` and `programs` are what 0.4.0's read adds (the services' display names, the
+    programs on disk); without them it answers as a read before 0.4.0 did."""
 
-    def __init__(self, profiles=None, rules=None, exposure=(), denied=False, networks=None, fail_read=""):
+    def __init__(self, profiles=None, rules=None, exposure=(), denied=False, networks=None, fail_read="", services=None, programs=None):
         self.profiles = {n: {"Name": n, "Enabled": True, "Inbound": "NotConfigured", "Outbound": "NotConfigured", "Notify": "True",
                              "AllowInbound": "NotConfigured", "LogBlocked": "False", "LogFile": ""} for n in ("Domain", "Private", "Public")}
         for name, on in (profiles or {}).items():
             self.profiles[name]["Enabled"] = on
         self.rules = [dict(r) for r in (BUILTINS if rules is None else rules)]
         self.networks = networks if networks is not None else [
-            {"Index": 11, "Interface": "Wi-Fi", "Name": "calico 3", "Category": "Public", "IPv4": "Internet", "IPv6": "NoTraffic"}]
+            {"Index": 11, "Interface": "Wi-Fi", "Name": "Lakeside 4", "Category": "Public", "IPv4": "Internet", "IPv6": "NoTraffic"}]
         self.exposure, self.denied, self.fail_read = list(exposure), denied, fail_read
+        self.named = {k: v for k, v in (("Services", services), ("Programs", programs)) if v is not None}
         self.scripts: list[str] = []
         self.reads = 0
 
@@ -66,7 +68,8 @@ class FakeWindows:
             if self.fail_read:
                 return 1, ERROR_MARK + self.fail_read + "\r\n", ""
             return 0, json.dumps({"Profiles": list(self.profiles.values()), "Networks": self.networks, "Rules": self.rules,
-                                  "Defender": {"Antivirus": True, "RealTime": True, "Signatures": "2026-11-07T22:38:16"}, "Elevated": False}), ""
+                                  "Defender": {"Antivirus": True, "RealTime": True, "Signatures": "2026-11-07T22:38:16"}, "Elevated": False,
+                                  **self.named}), ""
         if "Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True" in s:
             for p in self.profiles.values():
                 p["Enabled"] = True
@@ -140,7 +143,7 @@ def test_the_whole_configuration_is_read_once_kept_and_said():
     s = fw.status()
     assert s["valid"] and s["present"] and "problem" not in s and fake.reads == 1
     assert s["summary"] == "Windows Defender Firewall: on; Public network in use; 6 rules (3 letting in)"
-    assert s["firewall"] == "on for Domain, Private, Public" and s["networkInUse"] == "Wi-Fi: calico 3 (public)"
+    assert s["firewall"] == "on for Domain, Private, Public" and s["networkInUse"] == "Wi-Fi: Lakeside 4 (public)"
     assert s["inbound"] == "Domain block (Windows' default); Private block (Windows' default); Public block (Windows' default)"
     assert s["ruleCount"] == "6: 3 letting in, 0 Liminal's, 1 turned off"
     assert s["remoteAddresses"] == "read for 5 of 6 rules (an administrator reads them all)"
@@ -149,16 +152,21 @@ def test_the_whole_configuration_is_read_once_kept_and_said():
     fw.status()
     assert fake.reads == 1  # kept: the platform asks every plugin's status on each look
     networks, profiles, rules = s["tables"]
-    assert networks["rows"][0][:4] == ["Wi-Fi", "calico 3", {"text": "public", "sub": "the Public profile applies"}, "IPv4 Internet, IPv6 NoTraffic"]
+    assert networks["rows"][0][:4] == ["Wi-Fi", "Lakeside 4", {"text": "public", "sub": "the Public profile applies"}, "IPv4 Internet, IPv6 NoTraffic"]
     assert networks["rows"][0][4] == {"form": "network", "title": "Make private", "label": "Make Wi-Fi private",
-                                      "values": {"index": 11, "category": "Private", "label": "Wi-Fi: calico 3"}}
+                                      "values": {"index": 11, "category": "Private", "label": "Wi-Fi: Lakeside 4"}}
     assert [r[0] for r in profiles["rows"]] == ["Domain", "Private", "Public"] and profiles["rows"][2][5] == "Wi-Fi"
     assert profiles["rows"][2][6]["values"] == {"profile": "Public", "enabled": "on", "inbound": "default", "outbound": "default", "notify": "on"}
     assert [c["value"] for c in rules["options"][0]["choices"]] == ["in-allow", "in-block", "out", "liminal", "off", "all"]
     assert rules["options"][0]["value"] == "in-allow" and rules["options"][0]["hook"] == "show_rules"
+    assert [c["note"] for c in rules["options"][0]["choices"]] == ["4 rules, 1 turned off", "1 rule", "1 rule", "0 rules", "1 rule",
+                                                                   "6 rules, 1 turned off"]  # 0.4.0: the rules turned off counted in
     cells = [r["cells"] for r in rules["rows"]]  # 0.3.0: each row {cells, key, group, own, why}, in its group
-    assert [text(c[0]) for c in cells] == ["Delivery Optimization (TCP-In)", "Core Networking - Router Advertisement (ICMPv6-In)", "Game server"]
-    assert [r["group"] for r in rules["rows"]] == ["system", "system", "application"]
+    assert [text(c[0]) for c in cells] == ["Delivery Optimization (TCP-In)", "Core Networking - Router Advertisement (ICMPv6-In)", "Game server",
+                                           "Remote Desktop - User Mode (TCP-In)"]  # 0.4.0: the one turned off too, after those on
+    assert [r["group"] for r in rules["rows"]] == ["system", "system", "application", "system"]
+    assert [r.get("off", False) for r in rules["rows"]] == [False, False, False, True] and cells[3][8]["title"] == "Turn on"
+    assert rules["note"] == "4 shown (1 turned off): inbound allowed; moving a rule to another group changes nothing in the firewall"
     game = cells[2]
     assert game[3] == "TCP 27015-27030" and game[5] == "any" and game[9]["form"] == "rule-remove"  # not one of Windows' own
     assert cells[0][9] == "–" and cells[1][3] == "not read" and cells[1][5] == "not read"
@@ -166,7 +174,11 @@ def test_the_whole_configuration_is_read_once_kept_and_said():
                            "values": {"rule_id": "DeliveryOptimization-TCP-In", "enabled": "off",
                                       "label": "Delivery Optimization (TCP-In) (DeliveryOptimization-TCP-In)"}}
     assert [a.get("form") or a.get("hook") for a in rules["actions"]] == ["rule-add", "find", "refresh", "label-new"]
-    assert [(g["id"], g["count"]) for g in rules["groups"]] == [("system", 2), ("application", 1), ("other", 0)]
+    assert [(g["id"], g["count"]) for g in rules["groups"]] == [("system", 3), ("application", 1), ("other", 0)]
+    by = {g["id"]: g for g in rules["groups"]}  # 0.4.0: a heading for each service and application
+    assert [(c["title"], c["count"]) for c in by["system"]["children"]] == [("Core Networking", 1), ("Delivery Optimization", 1),
+                                                                            ("Remote Desktop", 1)]
+    assert [(c["title"], c["count"]) for c in by["application"]["children"]] == [("Game server", 1)]  # in no install folder: its rule's name
 
 
 def test_rules_are_found_and_shown_by_a_preset():
@@ -211,9 +223,9 @@ def test_each_change_runs_as_an_administrator_and_is_read_back():
                        (("x", "in", "allow", "tcp", "", "", "", "Office"), "profiles are any")):
         with pytest.raises(ValueError, match=words):
             fw.make_rule(*bad)
-    assert fw.set_network(11, "private")["said"] == "Wi-Fi (calico 3) is private now"
+    assert fw.set_network(11, "private")["said"] == "Wi-Fi (Lakeside 4) is private now"
     assert "Set-NetConnectionProfile -InterfaceIndex 11 -NetworkCategory Private" in "\n".join(fake.scripts)
-    assert fw.status()["networkInUse"] == "Wi-Fi: calico 3 (private)"
+    assert fw.status()["networkInUse"] == "Wi-Fi: Lakeside 4 (private)"
     with pytest.raises(ValueError, match="no rule with the id"):
         fw.set_rule("gone", "off")
 
@@ -320,7 +332,7 @@ def test_the_command_line_reads_finds_and_refuses_a_risk(monkeypatch, capsys):
     fw = plugin(FakeWindows())
     monkeypatch.setattr(cli, "MACHINE", fw)
     assert cli.main(["profiles"]) == 0 and capsys.readouterr().out.splitlines()[2].startswith("Public   firewall on;")
-    assert cli.main(["networks"]) == 0 and "Wi-Fi: calico 3 (Public)" in capsys.readouterr().out
+    assert cli.main(["networks"]) == 0 and "Wi-Fi: Lakeside 4 (Public)" in capsys.readouterr().out
     assert cli.main(["find", "game", "--in"]) == 0
     out = capsys.readouterr().out.splitlines()
     assert out[0] == "1 rule found: “game”, inbound" and out[1].startswith("on   in   allow  TCP 27015-27030") and out[1].endswith("[{A1}]")
