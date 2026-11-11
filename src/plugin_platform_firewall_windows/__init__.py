@@ -32,6 +32,11 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   everything in by default, is asked a second time: this PC may be a router's DMZ host. A change needs an
   administrator: run as one, or Windows asks (UAC).
 - The library's Firewall base keeps its setup (on, exposure, the services' rules) and Liminal's own rules' hooks.
+- What it attaches to (0.5.0, plugin API 2.2; the user, 2026-11-11: "each plugin should reflect the the API its attached
+  to, and present links that provide documentation"): Windows PowerShell and UAC, the NetSecurity, NetConnection and
+  Defender cmdlets, Windows Firewall itself and its COM policy, and what names a rule (apis.py), drawn on the plugin's
+  page; `api_facts` says what the last read found of them (when, how long, the rules, the profiles, the networks,
+  Defender's state), asking nothing.
 
     python -m plugin_platform_firewall_windows status | rules [PRESET] | find WORDS [--port N] [--in|--out]
         [--allow|--block] | profiles | networks | set-rule ID on|off | remove-rule ID | add-rule NAME ... |
@@ -54,7 +59,9 @@ from liminal_libs.machines.plugin import CommandError
 from liminal_libs.machines.rulegroups import Sorted, key_of
 from liminal_libs.machines.windows import PowerShell, is_elevated, quote
 
-__version__ = "0.4.0"
+from .apis import APIS, DEFENDER_API, NETCONNECTION, NETSECURITY
+
+__version__ = "0.5.0"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -321,7 +328,8 @@ class WindowsFirewallPlugin(Firewall):
     title = "Windows Firewall"
     about = ("Windows Defender Firewall, the networks and Microsoft Defender on this PC: every rule and profile read, queried "
              "and changed on your word (an administrator's, through UAC)")
-    api = "2.1"
+    api = "2.2"
+    apis = APIS  # what it attaches to: PowerShell and UAC, NetSecurity, NetConnection, Defender, the COM policy (apis.py)
     order = 710
     HOOKS = (*Firewall.HOOKS, "refresh", "find_rules", "show_rules", "set_rule", "remove_rule", "make_rule", "set_profile", "set_network")
 
@@ -370,6 +378,27 @@ class WindowsFirewallPlugin(Firewall):
         if self.present():
             self.snapshot()  # read on a thread now, so the page's first look waits on nothing
         return interface
+
+    def api_facts(self) -> dict:
+        """What the last read found of its APIs, asking nothing (a read under way is not waited for): when it was and how
+        long it took, the rules and profiles (NetSecurity), the networks (NetConnection), Defender's state; why the last
+        read failed, if it did."""
+        with self._rt.lock:
+            snap, error = self._rt.snap, self._rt.error
+        out: dict[str, dict[str, str]] = {}
+        if snap is not None:
+            on = sum(1 for r in snap.rules if r.enabled)
+            out[NETSECURITY.name] = {
+                "Last read": f"{when(snap.at)}, in {snap.took:.1f} s",
+                "Rules": f"{len(snap.rules):,} ({on:,} on)",
+                "Profiles": ", ".join(f"{p['name']} {'on' if p['enabled'] else 'off'}" for p in snap.profiles) or "none read",
+                "Read as": "an administrator" if snap.elevated else "not an administrator: remote addresses from the COM policy"}
+            out[NETCONNECTION.name] = {"Networks": ", ".join(f"{n['interface']} ({n['category'].lower()})" for n in snap.networks)
+                                       or "none connected"}
+            out[DEFENDER_API.name] = {"State": self._defender_words(snap)}
+        if error:
+            out.setdefault(NETSECURITY.name, {})["Last read failed"] = error
+        return out
 
     def refresh(self) -> dict:
         """The configuration read again now (the page's Refresh)."""

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.5.0 (2026-11-11)
+
+Its API on its page, plugin API 2.2 (the user: "each plugin should reflect the the API its attached to, and present
+links that provide documentation, the plugin interface should more or less contain what it already has, BUT, it should
+also expose more of what the API is about"). Six cards (`apis.py`), each with Microsoft Learn's pages, every part of the
+API said covered or not, and every call the plugin makes beside the API's other notable ones:
+- Windows PowerShell 5.1: the command line it runs the read and every change with, JSON, elevation (Start-Process
+  -Verb RunAs, UAC), IsUserAnAdmin, the read's own administrator check.
+- NetSecurity: the rules and their port, program, service and address filters read in bulk, the profiles; Set-, New-
+  and Remove-NetFirewallRule, Set-NetFirewallProfile; the module's other parts (global settings, the Hyper-V firewall,
+  dynamic keywords, IPsec, Group Policy) under "more of the API".
+- NetConnection: the networks and their categories.
+- Microsoft Defender Antivirus: Get-MpComputerStatus, beside its preferences, signatures, scans and threats.
+- Windows Firewall and its COM policy (INetFwPolicy2.Rules: the remote addresses without an administrator), netsh
+  advfirewall, its log, the Hyper-V firewall, the Windows Filtering Platform.
+- Windows' names for a rule: Get-Service, Get-AppxPackage, FileVersionInfo.
+
+`api_facts()` says what the last read found, asking nothing: when and how long, the rules, the profiles, the rights it
+read with, the networks, Defender's state, and why the last read failed. Tests: the cards name every cmdlet the plugin's
+scripts send over the read and every change (a stand-in powershell.exe), the read's COM and .NET calls and the library's
+PowerShell calls; a link check runs with LIMINAL_VENDOR_PAGES=1. Needs liminal-libs>=1.49.0.
+
 ## 0.4.0 (2026-11-09)
 
 A heading for each service and each application (the user: "for the windows and linux firewall, lets have the same

@@ -16,7 +16,7 @@ rules that are turned off should be shown as well" (2026-11-09).
 
 ## What it does
 
-A machine plugin of the platform (`liminal_libs.machines.firewall.Firewall`, plugin API 2.1) driving Windows Defender
+A machine plugin of the platform (`liminal_libs.machines.firewall.Firewall`, plugin API 2.2) driving Windows Defender
 Firewall through PowerShell (the library's `machines.windows.PowerShell`: a script given as `-EncodedCommand`,
 windowless).
 
@@ -104,3 +104,32 @@ python -m plugin_platform_firewall_windows exposure
 A rule's id (in brackets in `rules` and `find`) is what `set-rule` and `remove-rule` name. A change needs an
 administrator: run as one, or Windows asks (UAC). `set-profile` refuses `--off` or `--inbound allow` without
 `--accept-risk`.
+
+## Its API
+
+The user's words (2026-11-11): "each plugin should reflect the the API its attached to, and present links that provide
+documentation, the plugin interface should more or less contain what it already has, BUT, it should also expose more of
+what the API is about". Since 0.5.0 (plugin API 2.2) the plugin declares what it attaches to (`apis.py`), and the
+platform's page draws each card: what the API is, its links, every part of it (those the plugin uses first, the rest
+under "more of the API": IPsec, the Hyper-V firewall, dynamic keywords, Group Policy...) and every call it makes, with
+the API's other notable calls beside them.
+
+- **Windows PowerShell 5.1** and its elevation: [about_PowerShell_exe](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_exe?view=powershell-5.1),
+  [Start-Process](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process?view=powershell-5.1),
+  [User Account Control](https://learn.microsoft.com/en-us/windows/security/application-security/application-control/user-account-control/).
+- **NetSecurity**: [the module](https://learn.microsoft.com/en-us/powershell/module/netsecurity/?view=windowsserver2025-ps),
+  [Manage Windows Firewall with the command line](https://learn.microsoft.com/en-us/windows/security/operating-system-security/network-security/windows-firewall/configure-with-command-line).
+- **NetConnection**: [Get-NetConnectionProfile](https://learn.microsoft.com/en-us/powershell/module/netconnection/get-netconnectionprofile?view=windowsserver2025-ps),
+  [Set-NetConnectionProfile](https://learn.microsoft.com/en-us/powershell/module/netconnection/set-netconnectionprofile?view=windowsserver2025-ps).
+- **Microsoft Defender Antivirus**: [Get-MpComputerStatus](https://learn.microsoft.com/en-us/powershell/module/defender/get-mpcomputerstatus?view=windowsserver2025-ps),
+  [the Defender module](https://learn.microsoft.com/en-us/powershell/module/defender/?view=windowsserver2025-ps).
+- **Windows Firewall** and its COM policy: [the overview](https://learn.microsoft.com/en-us/windows/security/operating-system-security/network-security/windows-firewall/),
+  [INetFwPolicy2](https://learn.microsoft.com/en-us/windows/win32/api/netfw/nn-netfw-inetfwpolicy2) (the remote addresses
+  without an administrator), [netsh advfirewall](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/netsh-advfirewall).
+- **Windows' names** for a rule's service, app and program: Get-Service, [Get-AppxPackage](https://learn.microsoft.com/en-us/powershell/module/appx/get-appxpackage?view=windowsserver2025-ps),
+  [FileVersionInfo](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.fileversioninfo.getversioninfo?view=netframework-4.8.1).
+
+`api_facts()` says what the last read found, asking nothing: when it was and how long it took, the rules and the
+profiles, whether it ran as an administrator, the networks and their categories, Defender's state, and why the last
+read failed, if it did. Every address on the cards was read on 2026-11-11; the test `test_the_cards_pages_answer` asks
+each of them again when `LIMINAL_VENDOR_PAGES=1` is set (it is skipped otherwise).
