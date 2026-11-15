@@ -305,7 +305,7 @@ def test_status_and_the_whole_setup_on_a_pc_with_a_profile_off():
     assert "problem" not in fw.status() and [r.name for r in fw.list_rules()] == ["mail-example-test"]
     assert [(d["step"], d["ok"]) for d in fw.setup(log=lambda m: None)] == [("enable", None), ("exposure", False), ("rules", None)]
     script = next(s for s in fake.scripts if "Get-NetFirewallRule -Direction Inbound" in s)
-    assert "$ports = @(8765,8775,8785,8795,8796)" in script and "python(w)?(3[0-9.]*)?\\.exe$" in script
+    assert "$ports = @(8765,8775,8785,8795)" in script and "python(w)?(3[0-9.]*)?\\.exe$" in script
 
 
 def test_liminals_rules_are_made_and_removed_and_no_other_is_touched():

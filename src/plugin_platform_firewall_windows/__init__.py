@@ -61,7 +61,7 @@ from liminal_libs.machines.windows import PowerShell, is_elevated, quote
 
 from .apis import APIS, DEFENDER_API, NETCONNECTION, NETSECURITY
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
