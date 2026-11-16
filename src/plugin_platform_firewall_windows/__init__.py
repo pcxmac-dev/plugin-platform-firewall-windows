@@ -61,7 +61,7 @@ from liminal_libs.machines.windows import PowerShell, is_elevated, quote
 
 from .apis import APIS, DEFENDER_API, NETCONNECTION, NETSECURITY
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -325,6 +325,7 @@ class RiskRefused(ValueError):
 class WindowsFirewallPlugin(Firewall):
     name = "firewall-windows"
     ICON = "wallglobe"  # a brick wall with the globe behind it (liminal-libs 1.34.0; the user's picture: "this one for windows firewall")
+    SECTION = "os"  # drawn under the platform's OS plugins (liminal-platform 0.26.0)
     title = "Windows Firewall"
     about = ("Windows Defender Firewall, the networks and Microsoft Defender on this PC: every rule and profile read, queried "
              "and changed on your word (an administrator's, through UAC)")
