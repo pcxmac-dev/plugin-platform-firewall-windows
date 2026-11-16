@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.1 (2026-11-16)
+
+The GeoIP file's card tells the truth when the data folder is on another system's drive. With liminal-libs 1.58.0 the
+World Wide Web tab neither reads nor offers to install the GeoIP file of a data folder on a share or a network drive
+(`WorldView.elsewhere`): that system's platform installs its own. The card said "none installed yet: the World Wide Web
+tab's Install the GeoIP file… downloads one", an action the tab no longer offers there. It now says "none read here:"
+and why. With an older library it reads as before.
+
+Tests: the card's words for such a folder, with the view's word stood in for.
+
 ## 0.6.0 (2026-11-16)
 
 The World Wide Web tab (the user, 2026-11-14: "so for the firewall's both are going to get a 'world wide web view' that

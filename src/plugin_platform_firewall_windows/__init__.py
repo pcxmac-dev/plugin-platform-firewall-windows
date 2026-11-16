@@ -75,7 +75,7 @@ from liminal_libs.machines.world import WorldView, size_words
 from .apis import (APIS, CITY_LITE, CITY_LITE_LICENCE, DBIP, DBIP_CREDIT, DEFENDER_API, NAME_SERVERS, NETCONNECTION, NETSECURITY,
                    NPCAP)
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -454,8 +454,13 @@ class WindowsFirewallPlugin(Firewall):
                 "" if geoip.get("open", True) else " (let go while the tab is not watched; opened again at its next ask)")
         else:
             readable, why = geo.available()
-            file = ("none installed yet: the World Wide Web tab's Install the GeoIP file… downloads one once you accept its "
-                    "licence" if readable else f"none can be read here: {why}")
+            # 0.6.1: a data folder on another system's drive (liminal-libs 1.58.0's WorldView.elsewhere: a share, a network
+            # drive) holds that system's file, which the tab never reads, nor offers to install there
+            elsewhere = getattr(view, "elsewhere", None)
+            away = elsewhere() if callable(elsewhere) else ""
+            file = (f"none read here: {away}" if away
+                    else "none installed yet: the World Wide Web tab's Install the GeoIP file… downloads one once you accept "
+                         "its licence" if readable else f"none can be read here: {why}")
         return {NPCAP.name: npcap, DBIP.name: {"GeoIP file": file}}
 
     def refresh(self) -> dict:

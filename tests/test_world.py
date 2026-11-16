@@ -662,6 +662,12 @@ def test_the_tabs_facts_are_what_it_knows_and_asking_them_starts_nothing(tmp_pat
     assert watched.endswith(", while the World Wide Web tab is shown and for 20 s after")
     assert facts[cards.NPCAP.name]["Packets read"] == "8 in all: counted, none kept"
     assert facts[cards.DBIP.name]["GeoIP file"].startswith("none installed yet")
+    # 0.6.1: a data folder on another system's drive (liminal-libs 1.58.0's WorldView.elsewhere): its file is that system's,
+    # never read here, and no Install is offered there, so the card points to none
+    away = "Reading the GeoIP files: \\\\server\\share\\geoip is on another system's drive, and that is done from that system, not from here"
+    view.elsewhere = lambda: away
+    assert fw.api_facts()[cards.DBIP.name]["GeoIP file"] == f"none read here: {away}"
+    del view.elsewhere  # this machine's own folder again (or a library from before 1.58.0, which has no such word)
     fw.world_geoip(True)
     open_now = fw.api_facts()[cards.DBIP.name]["GeoIP file"]
     assert open_now.startswith("dbip-city-lite-2026-11.mmdb, built 2026-11-01, ") and open_now.endswith(": looked up on this PC")
