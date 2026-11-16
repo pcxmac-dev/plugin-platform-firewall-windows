@@ -49,8 +49,16 @@ def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
     assert [a.name for a in MACHINE.apis] == ["Windows PowerShell 5.1", "NetSecurity (PowerShell)", "NetConnection (PowerShell)",
                                               "Microsoft Defender Antivirus (Defender module)",
                                               "Windows Firewall (its policy over COM)",
-                                              "Windows' names for a rule's service, app and program"]
-    assert all(a.docs.startswith("https://learn.microsoft.com/") and a.verified == "2026-11-11" for a in MACHINE.apis)
+                                              "Windows' names for a rule's service, app and program",
+                                              # 0.6.0: what the World Wide Web tab reaches (test_world.py)
+                                              "Npcap (packet capture)", "DB-IP IP to City Lite", "OpenDNS (myip.opendns.com)",
+                                              "Google's name servers (o-o.myaddr.l.google.com)"]
+    windows, world = MACHINE.apis[:6], MACHINE.apis[6:]
+    assert all(a.docs.startswith("https://learn.microsoft.com/") and a.verified == "2026-11-11" for a in windows)
+    assert [(a.docs, a.verified) for a in world] == [("https://npcap.com/", "2026-11-15"),
+                                                     ("https://db-ip.com/db/lite.php", "2026-11-15"),
+                                                     ("https://www.opendns.com/", "2026-11-11"),  # as the hw-stats plugin read them
+                                                     ("https://developers.google.com/speed/public-dns", "2026-11-11")]
     assert all(a.used and a.covered and len(a.areas) > len(a.covered) for a in MACHINE.apis)  # more of each API than it uses
     assert not any(c.costs for a in MACHINE.apis for c in a.calls)  # nothing here costs money
     assert {c.name for c in cards.NETSECURITY.calls if c.writes} >= {"Remove-NetFirewallRule", "Set-NetFirewallProfile"}

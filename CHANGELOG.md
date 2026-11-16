@@ -1,5 +1,64 @@
 # Changelog
 
+## 0.6.0 (2026-11-16)
+
+The World Wide Web tab (the user, 2026-11-14: "so for the firewall's both are going to get a 'world wide web view' that
+shows the globe and the routes incoming all traffic, as well as monitoring port traffic stats"). The tab is liminal-libs
+1.55.0's Firewall base's (`machines/world.py`): liminal-platform 0.27.0 draws it after Main and API and asks it every 2 s
+while it is shown. The plugin names what it reaches (`apis.py`), since the library names no outside host:
+
+- Watching: while the tab is shown, and for 20 s after its last ask, every TCP and UDP packet at the adapter of this
+  PC's way out is read through Npcap, its headers alone, and counted by port and by network. Nothing is watched while
+  nobody looks, watching ends when the plugin is detached, and no packet is kept. Npcap is installed here without
+  "Restrict Npcap driver's access to Administrators only" (AdminOnly=0), so watching needs no administrator and no UAC.
+  Installed for administrators only, Npcap has its NpcapHelper ask for elevation (a UAC prompt) as soon as a process
+  that is no administrator lists or opens an adapter: the library reads that option first (read access alone) and a
+  platform that is no administrator asks Npcap nothing, the tab saying to install Npcap again without the option or to
+  run the platform as an administrator. Where watching cannot run, the tab says why and how to put it right, and never
+  asks for an administrator or a password.
+- Places: each public network is placed on the globe by DB-IP's IP to City Lite file, looked up on this PC, with its
+  route to home; the local network's peers are summed apart, never placed. No peer's address is sent anywhere, and none
+  is looked up by name.
+- The file (`GEOIP_URL`): DB-IP's monthly address, https://download.db-ip.com/free/dbip-city-lite-{year}-{month}.mmdb.gz,
+  last month's asked while this month's is not out yet. It is downloaded only from the tab's Install the GeoIP file…, on
+  your word: the first confirmation says what comes from where and shows its licence (`GEOIP_LICENCE`: CC BY 4.0 in plain
+  words, and the download's size, about 60 MB, 121 MB unpacked), and the second one accepts the licence. The platform
+  runs the install as a job (the base's `JOB_HOOKS`, kept), its progress followed in the plugin's panel; it stops by
+  itself after 30 minutes, the download included, and when the plugin is detached, and every hop is https from
+  download.db-ip.com alone. A month's file is never downloaded twice: Update… is offered once the file installed is an
+  earlier month's, and fetches this month's in its place. The file is open while the tab is watched and let go once
+  watching stops. Its places are credited "IP Geolocation by DB-IP", linked to db-ip.com, on the globe and with the
+  Places table (`ATTRIBUTION`). The second confirmation needs liminal-platform 0.28.0 or newer, which carries the licence's
+  refusal back to the page (0.27.0 shows it in the job's panel instead).
+- Home: the place you set in the plugin's settings, Home on the globe (LIMINAL_HOME_PLACE, "lat,lon[,label]", kept
+  through the platform's login), else this network's public address placed by the file. That address is asked of
+  OpenDNS's name servers, then Google's (`PUBLIC_DNS`: the hw-stats plugin's, asked with nslookup, windowless), once
+  while the plugin is attached and only once a file is installed. Only that question goes out, its name absolute
+  (`myip.opendns.com.`: none of this PC's DNS search suffixes goes with it); Windows' nslookup first asks the server
+  for its own name (the PTR record of the server's own address).
+- The busiest four ports here are charted (bytes a second in and out, the last ten minutes), and the busiest ports here,
+  the places and the ports elsewhere are tabled.
+
+Four more API cards (plugin API 2.2): Npcap (every libpcap call the library's capture makes on Windows, and before
+them the AdminOnly option it reads; its install options; its licence: five computers, and this PC's copy counts though
+it came with Wireshark, since Liminal uses it directly), DB-IP IP to City Lite (the download, the MMDB file and its
+reader, the credit; the other Lite files, the full databases and the lookup API under "more of the API"), and OpenDNS's
+and Google's name servers (each question as it is sent). `api_facts` says what the tab knows once it has been asked:
+whether it watches and at which adapter, the packets read, why it cannot watch, and the GeoIP file it places with and
+whether it is open now. Asking for the facts makes nothing and starts nothing: the tab's view is read through the
+base's `world_view(make=False)`.
+
+Tests (`tests/test_world.py`): the tab asked through the plugin as the platform asks it, with a stand-in capture,
+download and name servers and a tiny GeoIP file written in the test; watching started by the ask and stopped by the
+timeout and by the detach; the file downloaded only once its licence is accepted, asked as the platform's job route
+asks it (refused before its first line, then its progress in its log), and last month's while this month's is not out;
+Npcap installed for administrators only (a stand-in registry): asked nothing by a platform that is no administrator,
+through the plugin's own view and the library's default capture, tried again 15 s later still asking it nothing, and
+opened by a platform run as an administrator; home from the login, else from the name servers; the cards checked
+against what the plugin and the library reach. The machine the tests run on never shows through (`tests/conftest.py`:
+not inside WSL, no init known), so the suite reads alike on Windows and run inside a WSL distribution. Needs
+liminal-libs>=1.55.0 with its geo extra (maxminddb).
+
 ## 0.5.2 (2026-11-15)
 
 Drawn under the platform's OS plugins section, in the list on the left (the user: "then OS plugins" (the WSL distributions, the admin and the firewall plugins, as chosen)): `SECTION = "os"`, liminal-libs 1.51.0's machine-plugin attribute. liminal-platform 0.26.0 draws it; an older platform keeps the plugin under Machine plugins. Nothing else changes.

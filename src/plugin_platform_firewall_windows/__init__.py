@@ -37,6 +37,17 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   Defender cmdlets, Windows Firewall itself and its COM policy, and what names a rule (apis.py), drawn on the plugin's
   page; `api_facts` says what the last read found of them (when, how long, the rules, the profiles, the networks,
   Defender's state), asking nothing.
+- The World Wide Web tab (0.6.0; the user, 2026-11-14: "so for the firewall's both are going to get a 'world wide web
+  view' that shows the globe and the routes incoming all traffic, as well as monitoring port traffic stats"): the
+  library's Firewall base draws it (liminal-libs 1.55.0, machines/world.py), and this plugin names what it reaches
+  (apis.py). While the tab is shown, and for 20 s after, every TCP and UDP packet at this PC's adapter is read through
+  Npcap and counted by port and by network; Npcap installed for administrators only is asked nothing by a platform that
+  is none (it would ask for UAC), and the tab says how to put that right. Each public network is placed on the globe by
+  DB-IP's IP to City Lite file on this PC, with its route to home: the place you set (LIMINAL_HOME_PLACE, kept through
+  the login), else this network's public address as OpenDNS's or Google's name servers give it. The busiest ports are
+  charted and tabled. The file is downloaded only on your word, its CC BY 4.0 licence shown and accepted first, as a job
+  the platform follows in the plugin's panel (the base's JOB_HOOKS), and its places are credited "IP Geolocation by
+  DB-IP". No peer's address leaves this PC, and none is looked up by name.
 
     python -m plugin_platform_firewall_windows status | rules [PRESET] | find WORDS [--port N] [--in|--out]
         [--allow|--block] | profiles | networks | set-rule ID on|off | remove-rule ID | add-rule NAME ... |
@@ -54,14 +65,17 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from liminal_libs import geo
 from liminal_libs.machines.firewall import GROUP, NAME, Firewall, FirewallError, Rule
 from liminal_libs.machines.plugin import CommandError
 from liminal_libs.machines.rulegroups import Sorted, key_of
 from liminal_libs.machines.windows import PowerShell, is_elevated, quote
+from liminal_libs.machines.world import WorldView, size_words
 
-from .apis import APIS, DEFENDER_API, NETCONNECTION, NETSECURITY
+from .apis import (APIS, CITY_LITE, CITY_LITE_LICENCE, DBIP, DBIP_CREDIT, DEFENDER_API, NAME_SERVERS, NETCONNECTION, NETSECURITY,
+                   NPCAP)
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -332,7 +346,15 @@ class WindowsFirewallPlugin(Firewall):
     api = "2.2"
     apis = APIS  # what it attaches to: PowerShell and UAC, NetSecurity, NetConnection, Defender, the COM policy (apis.py)
     order = 710
+    # the base's hooks include world and world_geoip, the World Wide Web tab's page and its GeoIP file's install (0.6.0),
+    # which the platform runs as a job (the base's JOB_HOOKS, kept: the plugin runs no job of its own)
     HOOKS = (*Firewall.HOOKS, "refresh", "find_rules", "show_rules", "set_rule", "remove_rule", "make_rule", "set_profile", "set_network")
+    # -- the World Wide Web tab (0.6.0): its tab (TABS), its hooks and its setting (keys: LIMINAL_HOME_PLACE, home on the
+    # globe) are the Firewall base's; what it reaches is named here (apis.py), since the library names no outside host
+    GEOIP_URL = CITY_LITE  # DB-IP's IP to City Lite, this month's file (last month's while this month's is not out yet)
+    GEOIP_LICENCE = CITY_LITE_LICENCE  # CC BY 4.0 in plain words, and the download's size: shown before it is accepted
+    ATTRIBUTION = DBIP_CREDIT  # "IP Geolocation by DB-IP", linked, wherever its places are
+    PUBLIC_DNS = NAME_SERVERS  # OpenDNS's and Google's, asked for this network's public address: home, when you set none
 
     def __init__(self, powershell: PowerShell | None = None, elevated=None, clock=time.time):
         self.ps = powershell if powershell is not None else PowerShell()
@@ -383,7 +405,8 @@ class WindowsFirewallPlugin(Firewall):
     def api_facts(self) -> dict:
         """What the last read found of its APIs, asking nothing (a read under way is not waited for): when it was and how
         long it took, the rules and profiles (NetSecurity), the networks (NetConnection), Defender's state; why the last
-        read failed, if it did."""
+        read failed, if it did. And, once the World Wide Web tab was asked since the plugin was attached (0.6.0), whether
+        it watches through Npcap and the GeoIP file it places with (_world_facts)."""
         with self._rt.lock:
             snap, error = self._rt.snap, self._rt.error
         out: dict[str, dict[str, str]] = {}
@@ -399,7 +422,41 @@ class WindowsFirewallPlugin(Firewall):
             out[DEFENDER_API.name] = {"State": self._defender_words(snap)}
         if error:
             out.setdefault(NETSECURITY.name, {})["Last read failed"] = error
+        out.update(self._world_facts())
         return out
+
+    def _world_facts(self) -> dict[str, dict[str, str]]:
+        """What the World Wide Web tab knows of what it reaches (WorldView.describe), asking nothing and starting nothing:
+        whether it watches through Npcap, at which adapter, or why it cannot; the packets it read; the GeoIP file it places
+        with (DB-IP's), and whether it is open now (it is let go while nobody watches). Nothing before the tab was first
+        asked since the plugin was attached: no view is made for this (the base's world_view(make=False))."""
+        view = self.world_view(make=False)  # the Firewall base's view: made at the tab's first ask, forgotten on detach
+        if not isinstance(view, WorldView):
+            return {}
+        d = view.describe()
+        w = d.get("watching") or {}
+        error = d.get("error") or w.get("error") or ""
+        while_shown = f"while the World Wide Web tab is shown and for {view.timeout:g} s after"
+        if w.get("running"):
+            at = f", at the adapter of {d['address']}" if d.get("address") else ""
+            since = f" since {when(w['started'])}" if w.get("started") else ""
+            watching = f"yes{at}{since}, {while_shown}"
+        elif error:
+            watching = f"no: {error}"
+        else:
+            watching = f"no: only {while_shown}" + (f" (last until {when(w['stopped'])})" if w.get("stopped") else "")
+        npcap = {"Watching": watching, "Packets read": f"{int(w.get('packets') or 0):,} in all: counted, none kept"}
+        geoip = d.get("geoip")
+        if geoip:
+            built = ", ".join(x for x in ((f"built {geoip['date']}" if geoip.get("date") else ""),
+                                          (size_words(geoip["size"]) if geoip.get("size") else "")) if x)
+            file = str(geoip.get("file") or "") + (f", {built}" if built else "") + ": looked up on this PC" + (
+                "" if geoip.get("open", True) else " (let go while the tab is not watched; opened again at its next ask)")
+        else:
+            readable, why = geo.available()
+            file = ("none installed yet: the World Wide Web tab's Install the GeoIP file… downloads one once you accept its "
+                    "licence" if readable else f"none can be read here: {why}")
+        return {NPCAP.name: npcap, DBIP.name: {"GeoIP file": file}}
 
     def refresh(self) -> dict:
         """The configuration read again now (the page's Refresh)."""

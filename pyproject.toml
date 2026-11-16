@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plugin-platform-firewall-windows"
-version = "0.5.2"  # the plugin's own release (CHANGELOG.md); the app shows it on the Plugins view
-description = "Windows Firewall for Liminal: Windows Defender Firewall, the networks and Microsoft Defender on this PC, every rule and profile read, queried and changed on your word."
+version = "0.6.0"  # the plugin's own release (CHANGELOG.md); the app shows it on the Plugins view
+description = "Windows Firewall for Liminal: Windows Defender Firewall, the networks and Microsoft Defender on this PC, every rule and profile read, queried and changed on your word, and the World Wide Web tab: this PC's traffic on a globe."
 readme = "README.md"
 requires-python = ">=3.10"
-# the library it plugs into (the machine kind: liminal_libs.machines, plugin API 2.2: what it attaches to, 1.49.0)
-dependencies = ["liminal-libs>=1.52.0"]
+# the library it plugs into (the machine kind: liminal_libs.machines, plugin API 2.2: what it attaches to, 1.49.0; the
+# Firewall base's World Wide Web tab, 1.55.0), with its geo extra: maxminddb, which reads the GeoIP file the tab places with
+dependencies = ["liminal-libs[geo]>=1.55.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

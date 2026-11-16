@@ -1,7 +1,8 @@
 # plugin-platform-firewall-windows
 
 Windows Firewall for Liminal: Windows Defender Firewall, the networks and Microsoft Defender on this PC, every rule and
-profile read, queried and changed on your word.
+profile read, queried and changed on your word; and, on its World Wide Web tab, the traffic coming in and going out on a
+globe, with the ports' traffic.
 
 The user's words: "the platform is the interface for the software/hardware which facilitates the liminal framework";
 "i also need a windows and linux firewall plugin for the platform" (2026-11-07); "windows firewall, i need it to be
@@ -12,7 +13,9 @@ specific application or system process can be in an other, i can create labels, 
 and move the rules in to that" (2026-11-08); "lets group by application under apps or system, try best to organize
 under system and applications. Like system has 'core networking' or WSD or UPnP or RA Server or Remote Assistance or
 network discovery or ... applications has like starcraft or edge"; "try to group the system by 'services'"; "also
-rules that are turned off should be shown as well" (2026-11-09).
+rules that are turned off should be shown as well" (2026-11-09); "so for the firewall's both are going to get a 'world
+wide web view' that shows the globe and the routes incoming all traffic, as well as monitoring port traffic stats"
+(2026-11-14).
 
 ## What it does
 
@@ -80,8 +83,49 @@ default, is refused until you accept it a second time: this PC may be a router's
 listening here could be reached from the internet.
 
 **The setup** works as before: `enable` (every profile on), `exposure` (no rule lets another machine reach the
-framework's pages, 8765, 8775, 8785, 8795, 8796; a finding, never a change) and `rules` (the ports the framework's
-services need, opened as `Liminal: <name>`). `allow`/`remove` make and remove Liminal's own rules.
+framework's pages, 8765, 8775, 8785, 8795; a finding, never a change) and `rules` (the ports the framework's services
+need, opened as `Liminal: <name>`). `allow`/`remove` make and remove Liminal's own rules.
+
+## The World Wide Web tab
+
+Since 0.6.0 the plugin's page has a third tab after Main and API, **World Wide Web**: the library's Firewall base's tab
+(liminal-libs 1.55.0, `machines/world.py`), which liminal-platform 0.27.0 asks every 2 s while it is shown. The plugin
+names what it reaches (`apis.py`); the library names no outside host.
+
+- **Watching runs only while you look.** While the tab is shown, and for 20 s after its last ask, every TCP and UDP
+  packet at the adapter of this PC's way out is read through [Npcap](https://npcap.com/), its headers alone, and
+  counted by port and by network. Watching stops by itself after that, and when the plugin is detached; no packet is
+  kept, only counts, in memory. Npcap is installed on this PC without "Restrict Npcap driver's access to Administrators
+  only" (AdminOnly=0), so watching needs no administrator and no UAC. Installed for administrators only, Npcap has its
+  NpcapHelper ask for elevation (a UAC prompt) as soon as a process that is no administrator lists or opens an
+  adapter, so the library reads that option from the registry first (read access alone) and a platform that is no
+  administrator asks Npcap nothing: the tab says to install Npcap again with the option unticked, or to run the
+  platform as an administrator. Where watching cannot run, the tab says why and how to put it right, tries again 15 s
+  later at the soonest, and never asks for an administrator or a password.
+- **The globe** places each public network (an IPv4 /24, an IPv6 /48) traffic came from or went to, by its kind:
+  allowed in, unanswered in (nothing came back within 3 s: a scan, or a port the firewall drops) and out, with its route
+  to home. The local network's peers are summed apart and never placed. At most 300 places are drawn, the rest summed.
+- **Places come from a file on this PC**: DB-IP's [IP to City Lite](https://db-ip.com/db/download/ip-to-city-lite),
+  under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). No peer's address is sent anywhere, and none is
+  looked up by name. The file is downloaded only from the tab's **Install the GeoIP file…**: the first confirmation
+  says what is downloaded, from where and to where, and shows the licence; the second one accepts it. It is about 60 MB
+  (121 MB unpacked), this month's file, or last month's while this month's is not out yet, kept as one copy in the
+  data folder's `geoip/`. The platform runs the install as a job (the library's `JOB_HOOKS`), its progress, the bytes
+  so far and their percent, followed in the plugin's panel. It stops by itself after 30 minutes, the download
+  included, and when the plugin is detached; every hop is https, from download.db-ip.com alone. A month's file is never
+  downloaded twice: **Update…** is offered once the file installed is an earlier month's, and fetches this month's in
+  its place. The file is open while the tab is watched, and let go once watching stops. Wherever its places are shown,
+  the page says "IP Geolocation by DB-IP" with a link to db-ip.com, as the licence asks. The second confirmation comes
+  from liminal-platform 0.28.0 or newer, which carries the licence's refusal back to the page; 0.27.0 shows the
+  refusal in the job's panel instead.
+- **Home** is the place you set in the plugin's settings, **Home on the globe** (`LIMINAL_HOME_PLACE`,
+  `lat,lon[,label]`, as `48.86,2.35,Paris`; kept through the platform's login). Without one, home is where the file puts
+  this network's public address, asked once of OpenDNS's name servers, then Google's (the hw-stats plugin's), with
+  nslookup, windowless. Only that question goes out, its name absolute (`myip.opendns.com.`), so none of this PC's DNS
+  search suffixes is sent with it; Windows' nslookup first asks the server for its own name (the PTR record of the
+  server's own address).
+- **The ports**: the four busiest ports here are charted (bytes a second in and out, over the last ten minutes), and
+  tabled with the places and the ports elsewhere (the far end's ports of the connections this PC started).
 
 ## From the command line
 
@@ -129,7 +173,29 @@ the API's other notable calls beside them.
 - **Windows' names** for a rule's service, app and program: Get-Service, [Get-AppxPackage](https://learn.microsoft.com/en-us/powershell/module/appx/get-appxpackage?view=windowsserver2025-ps),
   [FileVersionInfo](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.fileversioninfo.getversioninfo?view=netframework-4.8.1).
 
+Since 0.6.0, four more for the World Wide Web tab:
+
+- **Npcap**, the packet capture the library calls through wpcap.dll: [Npcap](https://npcap.com/),
+  [its users' guide](https://npcap.com/guide/npcap-users-guide.html), [where its install options are kept, AdminOnly
+  among them](https://npcap.com/guide/npcap-devguide.html), [its API](https://npcap.com/guide/wpcap/pcap.html),
+  [pcap-filter(7)](https://www.tcpdump.org/manpages/pcap-filter.7.html). Its card names every libpcap call the
+  library's capture makes, and the AdminOnly option it reads before them. Npcap's free license covers five computers.
+  Copies installed and used only with Nmap, Wireshark or Microsoft Defender for Identity do not count, but this PC's
+  does: it came with Wireshark, and Liminal uses it directly. More computers, or redistributing it, need Npcap OEM.
+- **DB-IP IP to City Lite**, the GeoIP file: [the Lite databases and their licence](https://db-ip.com/db/lite.php),
+  [IP to City Lite](https://db-ip.com/db/download/ip-to-city-lite), [its MMDB format](https://db-ip.com/db/format/ip-to-city-lite/mmdb.html),
+  [the MaxMind DB format](https://maxmind.github.io/MaxMind-DB/) and [maxminddb](https://github.com/maxmind/MaxMind-DB-Reader-python),
+  which reads it.
+- **OpenDNS** (myip.opendns.com) and **Google's name servers** (o-o.myaddr.l.google.com), asked for this network's
+  public address: [OpenDNS's setup guide](https://www.opendns.com/setupguide/), [Google Public DNS](https://developers.google.com/speed/public-dns).
+
 `api_facts()` says what the last read found, asking nothing: when it was and how long it took, the rules and the
 profiles, whether it ran as an administrator, the networks and their categories, Defender's state, and why the last
-read failed, if it did. Every address on the cards was read on 2026-11-11; the test `test_the_cards_pages_answer` asks
-each of them again when `LIMINAL_VENDOR_PAGES=1` is set (it is skipped otherwise).
+read failed, if it did. Since 0.6.0 it also says what the World Wide Web tab knows once it has been asked: whether it
+watches and at which adapter, the packets read, why it cannot watch, and the GeoIP file it places with (and whether
+that file is open now, or let go while nobody watches).
+
+The six Windows cards' addresses were read on 2026-11-11, the Npcap and DB-IP cards' on 2026-11-15. The name servers'
+cards are the hw-stats plugin's, read on 2026-11-11 (OpenDNS's setup guide and Google Public DNS's questions read again
+on 2026-11-15). The test `test_the_cards_pages_answer` asks each address again when `LIMINAL_VENDOR_PAGES=1` is set
+(it is skipped otherwise).
