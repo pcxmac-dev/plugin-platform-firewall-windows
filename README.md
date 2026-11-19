@@ -192,7 +192,9 @@ names none of this.
 The user's words (2026-11-16): "the globe-firewall should allow filtering, so i can view apps connected to hosts all
 across the globe, or ports talking to all hosts. The globe should have the same kind of geography associated with the
 exchanges globe, but the firewall globe should instead of exchanges, have all the backbones,ibones, major internet
-infrastructure, (as many as possible) datacenter locations."
+infrastructure, (as many as possible) datacenter locations." And (2026-11-19): "also on the firewall theres no real
+ibone or major hub s drawn on the map, data centers in the world (dataset) and major network 'bones' need to be
+displayed on the map"; "also underwater lines".
 
 - **What the globe shows**, the table right under it: the traffic watched now, or the hosts recorded; those filtered
   by program (its hosts across the globe), by port (every host on it), by direction (in or out) and by when they were
@@ -200,11 +202,15 @@ infrastructure, (as many as possible) datacenter locations."
   and the eight ports with the most hosts are offered right under the globe, the rest in the Programs and Ports tables
   below it, beside a Hosts table.
 - **The layers**: where the charts' exchanges globe draws exchanges, this globe draws the internet's infrastructure:
-  data centres, internet exchange points, cable landing stations, ground stations and teleports, submarine cables, and
-  telecom lines on land. "The same kind of geography" is read as the exchanges globe's marks, clusters and name boxes,
-  on this globe's filled land, its equator stressed; day and night and the sun's mark are left out of this version.
-  "ibones" is read as internet backbones: OpenStreetMap's telecom lines on land (partial: no country is complete) and
-  the submarine cables. Each layer is switched on and off in the globe's legend, remembered in this browser. The
+  data centres, internet exchange points, cable landing stations, ground stations and teleports, backbones and their
+  points of presence, submarine cables, and telecom lines on land. "The same kind of geography" is read as the
+  exchanges globe's marks, clusters and name boxes, on this globe's filled land, its equator stressed; day and night
+  and the sun's mark are left out of this version. "ibones" is read as internet backbones: the Internet Topology Zoo's
+  261 maps of networks (research networks such as GÉANT, Internet2 and ESnet, carriers such as Sprint, NTT and Cogent),
+  each network's newest map drawn as links between its cities, about 2010-2011 and logical, not today's fibre routes
+  (no free map of those exists: operators keep them private or sell them); OpenStreetMap's telecom lines on land
+  (partial: no country is complete); and the submarine cables. Each layer is switched on and off in the globe's
+  legend, remembered in this browser. The
   layers are drawn by liminal-platform 0.33.0 and later, whose page gives the globe its way to ask for them; an older
   platform's globe says that it cannot load them, and everything else works.
 - **The data sets**, in the World Wide Web tab's **Internet infrastructure** table, each downloaded only on your word
@@ -217,20 +223,32 @@ infrastructure, (as many as possible) datacenter locations."
 | --- | --- | --- | --- |
 | Data centres, and the exchange points mapped | OpenStreetMap, through the public Overpass API | ODbL 1.0 | 2 MB |
 | Submarine cables and landing stations | OpenStreetMap, through the public Overpass API | ODbL 1.0 | 3 MB |
-| Telecom lines on land (partial) | OpenStreetMap, through the public Overpass API | ODbL 1.0 | 20 MB |
+| Telecom lines on land (partial) | OpenStreetMap, through the public Overpass API | ODbL 1.0 | 15 MB |
 | Exchange points, ground stations and teleports | Wikidata, through its query service | CC0 | 0.2 MB |
 | Telecom cable routes in European waters | EMODnet Human Activities, through its WFS | CC BY 4.0 | 4 MB |
+| Backbone networks, about 2010-2011 | the Internet Topology Zoo, through GitHub | CC BY 4.0 | 0.35 MB (its own) |
 
 - **One request a data set**: its query asks for the tags or the kinds of place it draws and nothing more, nothing about
   this PC or its traffic, with the plugin's name and version as its User-Agent and no contact (Wikidata's policy asks
   automated clients to name one: a refusal for want of it is said in words). The public Overpass server asks apps not
   to lean on it: it is asked once a data set, on your click, and once more a minute later when it is busy.
+- **The submarine cables** are asked of every telecom category OpenStreetMap's mappers use (fibre_optic, fiber_optic,
+  optical, telephone, telegraph, telefon, communication, telephone/fibre_optic: 1,189 ways, where fibre_optic and
+  telephone alone were 1,115), as the Linux firewall plugin asks them; no power cable. The **lines on land** leave out
+  those on power poles (power=minor_line: local distribution, 6,394 of 15,775), which leaves the lines most like
+  backbones. **Wikidata's data centres** are asked with their kinds (colocation centres among them: 211 items, not 168).
 - **EMODnet's cable routes** are a fifth data set because its WFS offers GeoJSON: the actual routes in European waters
   (and French cables beyond) as six national sources gave them, asked longitude first (`srsName=EPSG:4326`).
+- **The Topology Zoo's maps** are a sixth: one archive of GML maps, unpacked in memory alone (32 MB at most, 2,000
+  files, 4 MB a map), of each network its newest map from 2000 on, its own points of presence with a place and the
+  links between them, each drawn as the great circle between its two ends. Its credit names its makers: "Internet
+  Topology Zoo (Knight, Nguyen, Falkner, Bowden, Roughan, IEEE JSAC 2011), Adelaide University, CC BY 4.0".
 - **Left out, and why**: PeeringDB and the IXP Database (for operational use alone), Packet Clearing House's
   directory and the ITU's map (non-commercial terms), TeleGeography (its data is sold), root server sites (no licence
   stated), cloud regions (no coordinates, and only one provider's page may be copied) and content networks' city lists
-  (their sites' terms).
+  (their sites' terms). Free, but not here yet: Wikipedia's list of exchange points (544 active, CC BY-SA 4.0, placed
+  only at their cities, whose places take a second request) and NOAA's cables in US waters (CC0, two requests): a
+  data set here is one request.
 
 ## From the command line
 
@@ -294,7 +312,8 @@ Since 0.6.0, four more for the World Wide Web tab:
 - **OpenDNS** (myip.opendns.com) and **Google's name servers** (o-o.myaddr.l.google.com), asked for this network's
   public address: [OpenDNS's setup guide](https://www.opendns.com/setupguide/), [Google Public DNS](https://developers.google.com/speed/public-dns).
 
-Since 0.7.0, four more for the Netstat tab and the globe's layers (named only where the library has the Netstat tab):
+Since 0.7.0, four more for the Netstat tab and the globe's layers, and since 0.7.1 a fifth (named only where the
+library has the Netstat tab):
 
 - **Windows' socket tables and their owners (IP Helper)**:
   [IP Helper](https://learn.microsoft.com/en-us/windows/win32/iphlp/ip-helper-start-page),
@@ -312,6 +331,10 @@ Since 0.7.0, four more for the Netstat tab and the globe's layers (named only wh
 - **EMODnet Human Activities (WFS)**: [the portal](https://emodnet.ec.europa.eu/en/human-activities),
   [the cables' record](https://emodnet.ec.europa.eu/geonetwork/srv/api/records/39ebe289-410b-4a5d-88a4-51bfcde538de),
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- **Internet Topology Zoo (GitHub)**: [its repository](https://github.com/mroughan/InternetTopologyZoo),
+  [its licence](https://raw.githubusercontent.com/mroughan/InternetTopologyZoo/main/LICENSE),
+  [Adelaide University's record](https://researchdata.edu.au/internet-topology-zoo-data-set/4045587),
+  [its DOI](https://doi.org/10.25909/30153949.v1).
 
 `api_facts()` says what the last read found, asking nothing: when it was and how long it took, the rules and the
 profiles, whether it ran as an administrator, the networks and their categories, Defender's state, and why the last
@@ -323,5 +346,6 @@ database holds, and each data set of the globe, downloaded or not, under its sou
 
 The six Windows cards' addresses were read on 2026-11-11, the Npcap and DB-IP cards' on 2026-11-15. The name servers'
 cards are the hw-stats plugin's, read on 2026-11-11 (OpenDNS's setup guide and Google Public DNS's questions read again
-on 2026-11-15). The four 0.7.0 cards' were read on 2026-11-18 (EMODnet's capabilities on 2026-11-17). The test
+on 2026-11-15). The four 0.7.0 cards' were read on 2026-11-18 (EMODnet's capabilities on 2026-11-17), and 0.7.1's,
+the Topology Zoo's, on 2026-11-19. The test
 `test_the_cards_pages_answer` asks each address again when `LIMINAL_VENDOR_PAGES=1` is set (it is skipped otherwise).

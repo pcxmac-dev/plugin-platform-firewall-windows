@@ -1,9 +1,9 @@
 """What Windows Firewall attaches to (plugin API 2.2): its cards are sound; they name every cmdlet the plugin's scripts
 send (the read and every change, through a stand-in powershell.exe), the COM and .NET calls of its read, and the
 library's PowerShell calls it runs them with; its facts are what the last read found, asked without a script; and the
-cards' pages answer (LIMINAL_VENDOR_PAGES=1 only, the one test that reaches the network). Since 0.7.0 four more cards,
-the Netstat tab's and the globe's layers' (their calls and facts: test_netstat.py), named only where the library has
-that tab (liminal-libs 1.65.0)."""
+cards' pages answer (LIMINAL_VENDOR_PAGES=1 only, the one test that reaches the network). Since 0.7.0 four more cards
+and since 0.7.1 a fifth, the Netstat tab's and the globe's layers' (their calls and facts: test_netstat.py), named
+only where the library has that tab (liminal-libs 1.65.0)."""
 from __future__ import annotations
 
 import inspect
@@ -56,7 +56,7 @@ def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
              "Google's name servers (o-o.myaddr.l.google.com)"]
     if netstat_in():  # 0.7.0, with liminal-libs 1.65.0: the Netstat tab's and the globe's layers' (test_netstat.py)
         names += ["Windows' socket tables and their owners (IP Helper)", "Overpass API (OpenStreetMap)",
-                  "Wikidata Query Service", "EMODnet Human Activities (WFS)"]
+                  "Wikidata Query Service", "EMODnet Human Activities (WFS)", "Internet Topology Zoo (GitHub)"]
     assert [a.name for a in MACHINE.apis] == names
     windows, world, netstat = MACHINE.apis[:6], MACHINE.apis[6:10], MACHINE.apis[10:]
     assert all(a.docs.startswith("https://learn.microsoft.com/") and a.verified == "2026-11-11" for a in windows)
@@ -68,7 +68,8 @@ def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
         ("https://learn.microsoft.com/en-us/windows/win32/iphlp/ip-helper-start-page", "2026-11-18"),
         ("https://wiki.openstreetmap.org/wiki/Overpass_API", "2026-11-18"),
         ("https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual", "2026-11-18"),
-        ("https://emodnet.ec.europa.eu/en/human-activities", "2026-11-18")] if netstat_in() else [])
+        ("https://emodnet.ec.europa.eu/en/human-activities", "2026-11-18"),
+        ("https://github.com/mroughan/InternetTopologyZoo", "2026-11-19")] if netstat_in() else [])
     assert all(a.used and a.covered and len(a.areas) > len(a.covered) for a in MACHINE.apis)  # more of each API than it uses
     assert not any(c.costs for a in MACHINE.apis for c in a.calls)  # nothing here costs money
     assert {c.name for c in cards.NETSECURITY.calls if c.writes} >= {"Remove-NetFirewallRule", "Set-NetFirewallProfile"}
@@ -123,7 +124,7 @@ def test_on_a_library_before_the_netstat_tab_it_names_what_0_6_1_named():
     and then names none of what the Netstat tab and the globe's layers reach: its cards are 0.6.1's ten."""
     class Before:  # a Firewall base without the Netstat tab (no netstat_view)
         pass
-    assert cards.APIS[10:] == cards.NETSTAT and len(cards.APIS) == 14
+    assert cards.APIS[10:] == cards.NETSTAT and len(cards.APIS) == 15
     assert cards_for(Before) == cards.APIS[:10] and not set(cards_for(Before)) & set(cards.NETSTAT)
     assert problems(cards_for(Before)) == []
 

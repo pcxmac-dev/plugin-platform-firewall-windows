@@ -65,12 +65,13 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   the World Wide Web tab is shown, unless you choose all the time the platform runs (LIMINAL_HOSTS_RECORDING, kept
   through the login). The globe shows the traffic watched or the hosts recorded, filtered by program, port, direction
   and when they were last seen, and draws the internet's infrastructure (data centres, exchange points, submarine
-  cables and their landing stations, telecom lines on land, ground stations and teleports) from free-licensed data
-  sets, each downloaded only on your word as a job, its size and licence said first, and credited where it is drawn
-  (INFRASTRUCTURE: OpenStreetMap's through the Overpass API, Wikidata's, EMODnet's). Off Windows the plugin is not for
-  the machine at all (not_for_here): nothing is read, recorded, kept or removed there, and every hook of its two tabs
-  is refused in words (make_netstat_view). On a library before 1.65.0 it loads as 0.6.1 did, its World Wide Web tab as
-  it was, and names none of what those reach.
+  cables and their landing stations, backbones and their points of presence, telecom lines on land, ground stations
+  and teleports) from free-licensed data sets, each downloaded only on your word as a job, its size and licence said
+  first, and credited where it is drawn (INFRASTRUCTURE: OpenStreetMap's through the Overpass API, Wikidata's,
+  EMODnet's, the Internet Topology Zoo's; the user, 2026-11-19: "major network 'bones' need to be displayed on the
+  map", "also underwater lines"). Off Windows the plugin is not for the machine at all (not_for_here): nothing is
+  read, recorded, kept or removed there, and every hook of its two tabs is refused in words (make_netstat_view). On a
+  library before 1.65.0 it loads as 0.6.1 did, its World Wide Web tab as it was, and names none of what those reach.
 
     python -m plugin_platform_firewall_windows status | rules [PRESET] | find WORDS [--port N] [--in|--out]
         [--allow|--block] | profiles | networks | set-rule ID on|off | remove-rule ID | add-rule NAME ... |
@@ -97,10 +98,10 @@ from liminal_libs.machines.windows import PowerShell, is_elevated, quote
 from liminal_libs.machines.world import WorldView, size_words
 
 from .apis import (APIS, CITY_LITE, CITY_LITE_LICENCE, DBIP, DBIP_CREDIT, DEFENDER_API, EMODNET, NAME_SERVERS,
-                   NETCONNECTION, NETSECURITY, NETSTAT, NPCAP, OVERPASS_API, SOCKETS, WIKIDATA)
+                   NETCONNECTION, NETSECURITY, NETSTAT, NPCAP, OVERPASS_API, SOCKETS, TOPOLOGY_ZOO, WIKIDATA)
 from .apis import INFRASTRUCTURE as DATA_SETS
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -133,7 +134,8 @@ PRESETS = {  # the rules shown: (title, which); those turned off too (0.4.0: "al
 DEFAULTS = {"inbound": "block", "outbound": "allow"}  # what Windows does where a profile's default is NotConfigured
 UAC = "Windows asks for an administrator's permission first (UAC)."
 SYSTEMS = {"linux": "Linux", "darwin": "macOS"}  # a system that is not Windows, by the name Python gives it, in words
-DATA_SET_CARDS = {"overpass": OVERPASS_API.name, "sparql": WIKIDATA.name, "geojson": EMODNET.name}  # by a set's format
+DATA_SET_CARDS = {"overpass": OVERPASS_API.name, "sparql": WIKIDATA.name, "geojson": EMODNET.name,  # by a set's format
+                  "gml": TOPOLOGY_ZOO.name}
 
 
 def _platform() -> str:
@@ -407,8 +409,8 @@ class WindowsFirewallPlugin(Firewall):
     PUBLIC_DNS = NAME_SERVERS  # OpenDNS's and Google's, asked for this network's public address: home, when you set none
     # -- the Netstat tab, the hosts database and the globe's filters and layers (0.7.0): the Firewall base's
     # (liminal-libs 1.65.0); what the layers are downloaded from is named here (apis.py's INFRASTRUCTURE:
-    # OpenStreetMap's through the Overpass API, Wikidata's, EMODnet's), each a data set the user downloads on the World
-    # Wide Web tab
+    # OpenStreetMap's through the Overpass API, Wikidata's, EMODnet's, the Internet Topology Zoo's), each a data set the
+    # user downloads on the World Wide Web tab
     INFRASTRUCTURE = DATA_SETS
 
     def __init__(self, powershell: PowerShell | None = None, elevated=None, clock=time.time, system: str | None = None):
