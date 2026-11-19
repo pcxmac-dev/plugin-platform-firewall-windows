@@ -10,7 +10,13 @@ name what it reaches, and its facts say what it knows, asking nothing.
 Nothing is captured, nothing is downloaded, no name server is asked and no process is started: the capture, the
 download and the lookup are stand-ins, the GeoIP file is a tiny one written here, and the real ones fail the test if
 reached. Npcap installed for administrators only (review F1) is a stand-in registry's option, and Npcap a stand-in
-that loads nothing: this PC's Npcap option is never read."""
+that loads nothing: this PC's Npcap option is never read.
+
+Since 0.7.0, with liminal-libs 1.65.0, every ask of the tab also reads the socket table for the hosts database: a
+stand-in table with no socket in it here, the hosts file's names none (the suite's guard, tests/conftest.py, refuses
+the real reader and keeps the database and the layers' folder in the test's own folder); and the tab's page gains the
+globe's first table, What the globe shows, and the internet infrastructure's, with the plugin's data sets' download
+forms (test_netstat.py). With an older library the tab is 0.6.1's, and so are its pins here (NETSTAT)."""
 from __future__ import annotations
 
 import contextlib
@@ -43,9 +49,15 @@ from liminal_libs.machines.windows import PowerShell
 from liminal_libs.machines.world import READ_S, LicenceRefused, WorldView
 from liminal_libs.sources.apis import problems
 from liminal_libs.traffic import TrafficBook
-from plugin_platform_firewall_windows import MACHINE, WindowsFirewallPlugin
+from plugin_platform_firewall_windows import MACHINE, WindowsFirewallPlugin, netstat_in
 from plugin_platform_firewall_windows import apis as cards
 from test_plugin import FakeWindows
+
+try:
+    from liminal_libs import sockets  # liminal-libs 1.65.0: the socket tables, read at every ask of the tab
+except ImportError:  # an older library: its tab reads none
+    sockets = None
+NETSTAT = netstat_in()  # the library's Firewall base has the Netstat tab and the globe's layers (liminal-libs 1.65.0)
 
 # CI installs maxminddb (liminal-libs[geo]): there the placing tests run, and fail rather than skip without it
 needs_reader = pytest.mark.skipif(not geo.available()[0] and not os.environ.get("CI"), reason="maxminddb is not installed here")
@@ -222,6 +234,25 @@ class Watched(WindowsFirewallPlugin):
         return WorldView(self.name, **self.stand_ins)
 
 
+def socket_table(*rows) -> dict:
+    """This PC's socket table as the library's sockets.read answers it, of the rows given (none by default): a
+    stand-in, so the tab's every ask, which also reads the socket table for the hosts database (0.7.0), reads nothing
+    real."""
+    return {"system": "windows", "at": NOW, "awake": 100.0, "took": 0.004, "root": False, "starts": True,
+            "read": ("tcp4", "tcp6", "udp4", "udp6"), "cut": False, "rows": list(rows), "notes": []}
+
+
+def layer_forms() -> list[str]:
+    """The ids of the forms that download the plugin's data sets (the infrastructure table's Download…, 0.7.0); none
+    on a library before 1.65.0."""
+    return [f"world-layer-{d['id']}" for d in cards.INFRASTRUCTURE] if NETSTAT else []
+
+
+def titles(page: dict) -> dict:
+    """The page's tables by their titles."""
+    return {t["title"]: t for t in page.get("tables") or ()}
+
+
 def wait_for(condition, seconds: float = 3.0) -> bool:
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
@@ -239,7 +270,9 @@ def watching() -> list[threading.Thread]:
 def _nothing_real(monkeypatch, tmp_path):
     """Nothing real is reached: no Npcap loaded, nor its option read from this PC's registry, no route asked, no name
     server, no download, no process started, not this PC's data folder (each reach is noted, so one inside a thread is
-    seen too). Each WorldView a test makes is stopped after it, and no watching thread is left."""
+    seen too). Each WorldView a test makes is stopped after it, and no watching thread is left. The socket table every
+    ask also reads (0.7.0, liminal-libs 1.65.0) is a stand-in with no socket in it, and the system's hosts file names
+    nothing."""
     reached: list[str] = []
 
     def refusing(name):
@@ -252,6 +285,9 @@ def _nothing_real(monkeypatch, tmp_path):
                          (subprocess, "Popen")):
         monkeypatch.setattr(module, name, refusing(name))
     monkeypatch.setattr(geo, "data_folder", lambda: tmp_path / "data" / "geoip")
+    if sockets is not None:
+        monkeypatch.setattr(sockets, "read", lambda *args, **kwargs: socket_table())
+        monkeypatch.setattr(sockets, "known_names", lambda *args, **kwargs: {})
     made: list[WorldView] = []
     init = WorldView.__init__
 
@@ -278,14 +314,22 @@ def geo_folder(tmp_path):
 
 # -- what the plugin names for the tab -----------------------------------------------------------------------------------------
 def test_the_tab_is_the_firewall_bases_with_db_ips_file_its_credit_and_the_name_servers():
-    assert MACHINE.TABS == Firewall.TABS == (Tab("world", "World Wide Web", "world", 2.0),)  # asked every 2 s while shown
+    # asked every 2 s while shown; from liminal-libs 1.65.0 the Netstat tab after it (0.7.0: test_netstat.py)
+    assert MACHINE.TABS == Firewall.TABS and MACHINE.TABS[0] == Tab("world", "World Wide Web", "world", 2.0)
+    assert len(MACHINE.TABS) == (2 if NETSTAT else 1)
     hooks = MACHINE.interface()["hooks"]
-    # the install is run by the platform as a job, its log the job's panel (the base's JOB_HOOKS, kept by the plugin)
+    # the install is run by the platform as a job, its log the job's panel (the base's JOB_HOOKS, kept by the plugin);
+    # from liminal-libs 1.65.0 a data set's download too
     assert hooks["world"].startswith("() ") and hooks["world_geoip"].startswith("(accept_licence=False, log=None) ")
-    assert MACHINE.JOB_HOOKS == Firewall.JOB_HOOKS == ("world_geoip",) and set(MACHINE.JOB_HOOKS) <= set(hooks)
+    jobs = ("world_geoip", "world_layer_get") if NETSTAT else ("world_geoip",)
+    assert MACHINE.JOB_HOOKS == Firewall.JOB_HOOKS == jobs
+    assert set(MACHINE.JOB_HOOKS) <= set(hooks)
     assert {"refresh", "set_profile", "set_network", "allow", "move_rules"} <= set(hooks)  # its own and the base's, as before
-    # home on the globe, set on the plugin's page and kept through the login: the base's one setting
-    assert MACHINE.keys == Firewall.keys and [(k.name, k.secret) for k in MACHINE.keys] == [("LIMINAL_HOME_PLACE", False)]
+    # home on the globe, set on the plugin's page and kept through the login: the base's setting; from liminal-libs
+    # 1.65.0 also when the hosts are recorded
+    assert MACHINE.keys == Firewall.keys
+    assert [(k.name, k.secret) for k in MACHINE.keys] == [("LIMINAL_HOME_PLACE", False)] + (
+        [("LIMINAL_HOSTS_RECORDING", False)] if NETSTAT else [])
     assert MACHINE.WORLD_TIMEOUT == 20.0
     # DB-IP's IP to City Lite at its monthly address, the library filling in the month
     assert MACHINE.GEOIP_URL == cards.CITY_LITE and world.month_url(MACHINE.GEOIP_URL, 2026, 11) == NOVEMBER
@@ -328,8 +372,12 @@ def test_the_tab_watches_this_pcs_adapter_while_it_is_asked_and_stops_by_itself(
     assert (by["81.2.69.0/24"]["kind"], by["81.2.69.0/24"]["count"], by["81.2.69.0/24"]["ports"]) == ("allowed", 1, [8775])
     assert all(o["lat"] is None for o in g["origins"]) and g["local"]["places"] == 1  # no GeoIP file: nothing placed yet
     assert g["attribution"] is None  # nothing placed: nothing to credit yet
-    assert [t["title"] for t in page["tables"]] == ["Busiest ports here", "Places", "Ports elsewhere"]
-    assert page["tables"][0]["rows"][0][0] == "8775/tcp" and page["watching"]["address"] == LAN
+    tables = ["Busiest ports here", "Places", "Ports elsewhere"]
+    if NETSTAT:  # what the globe shows first, right under it (the traffic, or the hosts recorded); the layers last
+        tables = ["What the globe shows", *tables, "Internet infrastructure"]
+        assert g["showing"] == "Traffic watched now" and g["layers"] == [] and g["layer_hook"] == "world_layer"
+    assert [t["title"] for t in page["tables"]] == tables
+    assert titles(page)["Busiest ports here"]["rows"][0][0] == "8775/tcp" and page["watching"]["address"] == LAN
     # nobody looks for longer than the timeout: watching stops by itself, and what was counted stays
     clock.t += 21
     assert wait_for(lambda: not view.running) and wait_for(lambda: watching() == []) and feeds[0].closed == 1
@@ -348,7 +396,8 @@ def test_without_a_geoip_file_db_ips_is_offered_its_licence_in_both_confirmation
     assert "No GeoIP file is installed" in page["globe"]["note"]
     # the form's own confirmation says what comes from where, with the licence first; the accept field's words are the
     # licence again, in the second confirmation the platform's page asks once the hook refuses
-    [form] = page["forms"]
+    form, *layers = page["forms"]  # from liminal-libs 1.65.0, the plugin's data sets' downloads after it
+    assert [f["id"] for f in layers] == layer_forms()
     assert (form["id"], form["hook"], form["title"]) == ("world-geoip", "world_geoip", "Install the GeoIP file")
     assert form["hook"] in fw.interface()["hooks"]
     [field] = form["fields"]
@@ -503,10 +552,11 @@ def test_db_ips_file_is_downloaded_only_once_its_licence_is_accepted_and_its_pla
     view = fw.world_view()
     assert wait_for(lambda: view.watcher.status()["packets"] == 8)
     page = fw.ask("world")
-    assert "forms" not in page and "actions" not in page  # this month's file is in: nothing more is offered
+    # this month's file is in: nothing more is offered for it (from liminal-libs 1.65.0 the data sets' downloads are)
+    assert [f["id"] for f in page.get("forms") or ()] == layer_forms() and "actions" not in page
     g = page["globe"]
     assert g["attribution"] == MACHINE.ATTRIBUTION  # credited wherever its places are: the globe ...
-    assert "Places: IP Geolocation by DB-IP, https://db-ip.com." in page["tables"][1]["note"]  # ... and the Places table
+    assert "Places: IP Geolocation by DB-IP, https://db-ip.com." in titles(page)["Places"]["note"]  # and Places
     by = {o["id"]: o for o in g["origins"]}
     london = by["81.2.69.0/24"]
     assert (london["city"], london["country"], london["code"], london["lat"], london["lon"]) == (

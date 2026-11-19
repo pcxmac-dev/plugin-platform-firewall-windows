@@ -1,7 +1,9 @@
 """What Windows Firewall attaches to (plugin API 2.2): its cards are sound; they name every cmdlet the plugin's scripts
 send (the read and every change, through a stand-in powershell.exe), the COM and .NET calls of its read, and the
 library's PowerShell calls it runs them with; its facts are what the last read found, asked without a script; and the
-cards' pages answer (LIMINAL_VENDOR_PAGES=1 only, the one test that reaches the network)."""
+cards' pages answer (LIMINAL_VENDOR_PAGES=1 only, the one test that reaches the network). Since 0.7.0 four more cards,
+the Netstat tab's and the globe's layers' (their calls and facts: test_netstat.py), named only where the library has
+that tab (liminal-libs 1.65.0)."""
 from __future__ import annotations
 
 import inspect
@@ -12,7 +14,7 @@ import pytest
 
 from liminal_libs.machines import windows
 from liminal_libs.sources.apis import dead_links, problems
-from plugin_platform_firewall_windows import MACHINE, READ_SCRIPT
+from plugin_platform_firewall_windows import MACHINE, READ_SCRIPT, cards_for, netstat_in
 from plugin_platform_firewall_windows import apis as cards
 from test_plugin import FakeWindows, plugin
 
@@ -45,20 +47,28 @@ def used_cmdlets() -> set[str]:
 
 
 def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
-    assert problems(MACHINE.apis) == [] and MACHINE.apis == cards.APIS
-    assert [a.name for a in MACHINE.apis] == ["Windows PowerShell 5.1", "NetSecurity (PowerShell)", "NetConnection (PowerShell)",
-                                              "Microsoft Defender Antivirus (Defender module)",
-                                              "Windows Firewall (its policy over COM)",
-                                              "Windows' names for a rule's service, app and program",
-                                              # 0.6.0: what the World Wide Web tab reaches (test_world.py)
-                                              "Npcap (packet capture)", "DB-IP IP to City Lite", "OpenDNS (myip.opendns.com)",
-                                              "Google's name servers (o-o.myaddr.l.google.com)"]
-    windows, world = MACHINE.apis[:6], MACHINE.apis[6:]
+    assert problems(MACHINE.apis) == [] and MACHINE.apis == cards_for()
+    names = ["Windows PowerShell 5.1", "NetSecurity (PowerShell)", "NetConnection (PowerShell)",
+             "Microsoft Defender Antivirus (Defender module)", "Windows Firewall (its policy over COM)",
+             "Windows' names for a rule's service, app and program",
+             # 0.6.0: what the World Wide Web tab reaches (test_world.py)
+             "Npcap (packet capture)", "DB-IP IP to City Lite", "OpenDNS (myip.opendns.com)",
+             "Google's name servers (o-o.myaddr.l.google.com)"]
+    if netstat_in():  # 0.7.0, with liminal-libs 1.65.0: the Netstat tab's and the globe's layers' (test_netstat.py)
+        names += ["Windows' socket tables and their owners (IP Helper)", "Overpass API (OpenStreetMap)",
+                  "Wikidata Query Service", "EMODnet Human Activities (WFS)"]
+    assert [a.name for a in MACHINE.apis] == names
+    windows, world, netstat = MACHINE.apis[:6], MACHINE.apis[6:10], MACHINE.apis[10:]
     assert all(a.docs.startswith("https://learn.microsoft.com/") and a.verified == "2026-11-11" for a in windows)
     assert [(a.docs, a.verified) for a in world] == [("https://npcap.com/", "2026-11-15"),
                                                      ("https://db-ip.com/db/lite.php", "2026-11-15"),
                                                      ("https://www.opendns.com/", "2026-11-11"),  # as the hw-stats plugin read them
                                                      ("https://developers.google.com/speed/public-dns", "2026-11-11")]
+    assert [(a.docs, a.verified) for a in netstat] == ([
+        ("https://learn.microsoft.com/en-us/windows/win32/iphlp/ip-helper-start-page", "2026-11-18"),
+        ("https://wiki.openstreetmap.org/wiki/Overpass_API", "2026-11-18"),
+        ("https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual", "2026-11-18"),
+        ("https://emodnet.ec.europa.eu/en/human-activities", "2026-11-18")] if netstat_in() else [])
     assert all(a.used and a.covered and len(a.areas) > len(a.covered) for a in MACHINE.apis)  # more of each API than it uses
     assert not any(c.costs for a in MACHINE.apis for c in a.calls)  # nothing here costs money
     assert {c.name for c in cards.NETSECURITY.calls if c.writes} >= {"Remove-NetFirewallRule", "Set-NetFirewallProfile"}
@@ -106,6 +116,16 @@ def test_its_facts_are_what_the_last_read_found_and_asking_them_sends_nothing():
     failed = plugin(FakeWindows(fail_read="The RPC server is unavailable."))
     failed.snapshot(wait=5)
     assert failed.api_facts() == {"NetSecurity (PowerShell)": {"Last read failed": "The RPC server is unavailable."}}
+
+
+def test_on_a_library_before_the_netstat_tab_it_names_what_0_6_1_named():
+    """The plugin loads on a library whose Firewall base has the World Wide Web tab alone (before liminal-libs 1.65.0),
+    and then names none of what the Netstat tab and the globe's layers reach: its cards are 0.6.1's ten."""
+    class Before:  # a Firewall base without the Netstat tab (no netstat_view)
+        pass
+    assert cards.APIS[10:] == cards.NETSTAT and len(cards.APIS) == 14
+    assert cards_for(Before) == cards.APIS[:10] and not set(cards_for(Before)) & set(cards.NETSTAT)
+    assert problems(cards_for(Before)) == []
 
 
 @pytest.mark.skipif(os.environ.get("LIMINAL_VENDOR_PAGES") != "1", reason="reaches the makers' pages: LIMINAL_VENDOR_PAGES=1")

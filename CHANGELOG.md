@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.7.0 (2026-11-18)
+
+The Netstat tab, the hosts database, and the globe's filters and internet infrastructure. The user, 2026-11-16: "the
+firewall app should have a 'netstat' like interface for looking at active ports and what apps they are attached to,
+and the hosts that they connect to across the lan or wan. the firewall app should also have a globe that can be
+zoomed and rotated and geoip'd hosts are databased for the apps they talk to, the time they are connected to *this
+*computer"; "the globe-firewall should allow filtering, so i can view apps connected to hosts all across the globe, or
+ports talking to all hosts. The globe should have the same kind of geography associated with the exchanges globe, but
+the firewall globe should instead of exchanges, have all the backbones,ibones, major internet infrastructure, (as many
+as possible) datacenter locations." The tab, the database, the filters and the layers are liminal-libs 1.65.0's
+Firewall base's (`sockets.py`, `hostbook.py`, `machines/netstat.py`, `machines/infrastructure.py`); the plugin names
+what they reach (`apis.py`). liminal-platform 0.33.0 draws the layers.
+
+- **Netstat**, a tab after World Wide Web, asked every 3 s while it is shown: this PC's listening ports and open
+  connections from Windows' own socket tables, each with its program, pid and service, the remote host and port,
+  whether that host is this PC's, the local network's or the internet's, its name or its GeoIP place, its state, since
+  when and how long it has been up. No packet captured, no administrator, no process started, no window, no name
+  looked up. What cannot be read is said in its row (where a service's process is on disk, which driver the System
+  process holds a socket for, a connection whose program has ended). A program run by an interpreter shows as the
+  interpreter (Liminal's own apps as python.exe, or pythonw.exe where they were started at logon or at boot), and a
+  port a program inside a WSL distribution listens on as wslrelay.exe's: which program holds it is for the Linux
+  firewall plugin inside that distribution to say.
+- **The hosts database**, this PC's own (the data folder's `hosts/hosts.db`, at most 50,000 rows): each program's
+  remote hosts, their ports, when they were first and last seen, how long they were connected while Windows was
+  awake, how many connections, and their places. It records only while the Netstat or the World Wide Web tab is shown,
+  unless you choose all the time the platform runs (**Recording…**, or the setting Recording hosts,
+  `LIMINAL_HOSTS_RECORDING`, kept through the login); **Forget…** removes every row, asked twice.
+- **The globe** shows the traffic watched or the hosts recorded, filtered by program, by port, by direction and by
+  when they were last seen, the eight programs and the eight ports with the most hosts right under it. It draws the
+  internet's infrastructure from five free-licensed data sets (`INFRASTRUCTURE`), each downloaded only on your word,
+  as a job (its size and its licence said first and accepted in a second confirmation; Cancel stops it), kept on this
+  PC and credited where it is drawn: data centres, submarine cables and their landing stations, and telecom lines on
+  land (OpenStreetMap, through the public Overpass API, ODbL 1.0); exchange points, ground stations and teleports
+  (Wikidata, CC0); telecom cable routes in European waters (EMODnet Human Activities' WFS, CC BY 4.0, asked longitude
+  first). PeeringDB, root-server sites and cloud regions are left out: not free-licensed, or no licence stated.
+- **Off Windows the plugin is not for the machine** (`not_for_here`): its status says so and nothing is read there,
+  and no Netstat view is made (`make_netstat_view`), so every hook of its two tabs is refused in words before it reads,
+  records, keeps, forgets or removes anything: there the hosts database and the layers are that system's own firewall
+  plugin's.
+- **Four more cards** (plugin API 2.2), their pages read on 2026-11-18: Windows' socket tables and their owners (IP
+  Helper: every call the library's reading makes, `sockets.WINDOWS_CALLS`), the Overpass API, the Wikidata Query
+  Service and EMODnet Human Activities (WFS). Their facts say the socket tables' last reading, how the hosts are
+  recorded, what the database holds and each data set's state, asking nothing.
+- Its floor is liminal-libs[geo]>=1.65.0. Given an older library all the same, it loads as 0.6.1 did: its World Wide
+  Web tab as it was, and none of the four cards.
+
+Tests: test_netstat.py (skipped before 1.65.0: the tab is the base's; each data set a DataSet with its forms' words;
+answers in each source's documented shape read into the layers; the page over a stand-in Windows reading; a download
+on the user's word; one reading shared and kept; off Windows nothing read, recorded or offered); test_world.py,
+test_apis.py and test_plugin.py follow the library; tests/conftest.py's `no_real_hosts` guard, as the library's: no
+test reads this PC's socket table or writes its hosts database.
+
 ## 0.6.1 (2026-11-16)
 
 The GeoIP file's card tells the truth when the data folder is on another system's drive. With liminal-libs 1.58.0 the
