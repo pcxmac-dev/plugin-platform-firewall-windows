@@ -42,10 +42,12 @@ import urllib.error
 import urllib.request
 from urllib.parse import quote
 
+import importlib.util
 import pytest
 
 # the Netstat tab, the hosts database and the globe's layers are liminal-libs 1.65.0's: skipped with an older library
 # (whose World Wide Web tab is 0.6.1's: test_world.py)
+ROUTES_TABLE = ["Routes"] if importlib.util.find_spec("liminal_libs.machines.routes") else []  # 1.67.0: last
 pytest.importorskip("liminal_libs.machines.netstat", reason="the library has no Netstat tab before liminal-libs 1.65.0")
 
 from conftest import Reached  # noqa: E402 - after the skip, as each of these
@@ -459,7 +461,7 @@ def test_the_globe_shows_the_hosts_recorded_filtered_by_program_port_direction_a
         assert fw.ask("world_show", "hosts") == {"said": "Hosts recorded · all of them", "ok": True}
         page = fw.ask("world")
         assert [t["title"] for t in page["tables"]] == ["What the globe shows", "Programs", "Ports", "Hosts",
-                                                        "Internet infrastructure"]
+                                                        "Internet infrastructure", *ROUTES_TABLE]
         first = page["tables"][0]
         assert [o["hook"] for o in first["options"]] == ["world_show", "world_direction", "world_within", "world_pick",
                                                          "world_pick"]

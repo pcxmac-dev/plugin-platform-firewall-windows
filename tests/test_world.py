@@ -37,6 +37,7 @@ import urllib.request
 from collections import deque
 from datetime import datetime, timezone
 
+import importlib.util
 import pytest
 
 from liminal_libs import capture, dns, geo, netpath
@@ -53,6 +54,7 @@ from plugin_platform_firewall_windows import MACHINE, WindowsFirewallPlugin, net
 from plugin_platform_firewall_windows import apis as cards
 from test_plugin import FakeWindows
 
+ROUTES_TABLE = ["Routes"] if importlib.util.find_spec("liminal_libs.machines.routes") else []  # 1.67.0: last
 try:
     from liminal_libs import sockets  # liminal-libs 1.65.0: the socket tables, read at every ask of the tab
 except ImportError:  # an older library: its tab reads none
@@ -374,7 +376,7 @@ def test_the_tab_watches_this_pcs_adapter_while_it_is_asked_and_stops_by_itself(
     assert g["attribution"] is None  # nothing placed: nothing to credit yet
     tables = ["Busiest ports here", "Places", "Ports elsewhere"]
     if NETSTAT:  # what the globe shows first, right under it (the traffic, or the hosts recorded); the layers last
-        tables = ["What the globe shows", *tables, "Internet infrastructure"]
+        tables = ["What the globe shows", *tables, "Internet infrastructure", *ROUTES_TABLE]
         assert g["showing"] == "Traffic watched now" and g["layers"] == [] and g["layer_hook"] == "world_layer"
     assert [t["title"] for t in page["tables"]] == tables
     assert titles(page)["Busiest ports here"]["rows"][0][0] == "8775/tcp" and page["watching"]["address"] == LAN
