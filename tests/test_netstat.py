@@ -428,7 +428,7 @@ def test_the_tab_lists_the_listening_ports_and_the_connections_with_their_progra
         assert sockets.SYSTEM in files["unread"]
         gone = rows[f"{WEB2}:443"]  # its owner has ended: said, and its name from the hosts file
         assert (gone["program"], gone["name"], gone["state"]) == (sockets.GONE, "cdn.example", "time-wait")
-        listening, database = page["tables"]
+        listening, database, *_recorded = page["tables"]  # liminal-libs 1.68.0: Connections recorded last
         assert listening["title"] == "Listening ports" and [r[:3] for r in listening["rows"]] == [
             ["445", "tcp", "every address"], ["5353", "udp", "every address"],
             [{"text": "8775", "sub": "Liminal's platform page"}, "tcp", "this machine only"]]
