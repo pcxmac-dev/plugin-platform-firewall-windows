@@ -303,7 +303,9 @@ def test_the_netstat_tab_is_the_firewall_bases_after_the_world_wide_web_tab_with
     # a data set's download is a job the page may cancel; a layer's geometry a read (no log line)
     assert MACHINE.JOB_HOOKS == ("world_geoip", "world_layer_get") and MACHINE.CANCEL_HOOKS == ("world_layer_get",)
     assert "world_layer" in MACHINE.READ_HOOKS
-    assert [k.name for k in MACHINE.keys] == ["LIMINAL_HOME_PLACE", "LIMINAL_HOSTS_RECORDING"]
+    from liminal_libs.machines import firewall as firewall_module  # liminal-libs 1.74.0: when the traffic is watched
+    watching = ["LIMINAL_TRAFFIC_WATCHING"] if hasattr(firewall_module, "WATCH_KEY") else []
+    assert [k.name for k in MACHINE.keys] == ["LIMINAL_HOME_PLACE", "LIMINAL_HOSTS_RECORDING", *watching]
     assert MACHINE.INFRASTRUCTURE == cards.INFRASTRUCTURE and MACHINE.apis == cards.APIS  # its data sets and cards
     assert set(cards.NETSTAT) <= set(MACHINE.apis) and "Netstat" in MACHINE.about
     assert contract_problems(MACHINE) == [] and problems(MACHINE.apis) == []

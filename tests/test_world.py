@@ -341,8 +341,10 @@ def test_the_tab_is_the_firewall_bases_with_db_ips_file_its_credit_and_the_name_
     # home on the globe, set on the plugin's page and kept through the login: the base's setting; from liminal-libs
     # 1.65.0 also when the hosts are recorded
     assert MACHINE.keys == Firewall.keys
+    from liminal_libs.machines import firewall as firewall_module  # liminal-libs 1.74.0: when the traffic is watched
     assert [(k.name, k.secret) for k in MACHINE.keys] == [("LIMINAL_HOME_PLACE", False)] + (
-        [("LIMINAL_HOSTS_RECORDING", False)] if NETSTAT else [])
+        [("LIMINAL_HOSTS_RECORDING", False)] if NETSTAT else []) + (
+        [("LIMINAL_TRAFFIC_WATCHING", False)] if hasattr(firewall_module, "WATCH_KEY") else [])
     assert MACHINE.WORLD_TIMEOUT == 20.0
     # DB-IP's IP to City Lite at its monthly address, the library filling in the month
     assert MACHINE.GEOIP_URL == cards.CITY_LITE and world.month_url(MACHINE.GEOIP_URL, 2026, 11) == NOVEMBER
