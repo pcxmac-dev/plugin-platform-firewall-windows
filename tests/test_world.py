@@ -55,6 +55,12 @@ from plugin_platform_firewall_windows import apis as cards
 from test_plugin import FakeWindows
 
 ROUTES_TABLE = ["Routes"] if importlib.util.find_spec("liminal_libs.machines.routes") else []  # 1.67.0: last
+# liminal-libs 1.70.0: the legs waiting for a line are tabled after the routes
+try:
+    from liminal_libs.machines.routes import WAITING_TITLE as _WAITING
+    ROUTES_TABLE = ROUTES_TABLE + [_WAITING]
+except ImportError:
+    pass
 try:
     from liminal_libs import sockets  # liminal-libs 1.65.0: the socket tables, read at every ask of the tab
 except ImportError:  # an older library: its tab reads none

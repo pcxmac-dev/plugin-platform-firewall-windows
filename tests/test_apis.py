@@ -56,7 +56,8 @@ def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
              "Google's name servers (o-o.myaddr.l.google.com)"]
     if netstat_in():  # 0.7.0, with liminal-libs 1.65.0: the Netstat tab's and the globe's layers' (test_netstat.py)
         names += ["Windows' socket tables and their owners (IP Helper)", "Overpass API (OpenStreetMap)",
-                  "Wikidata Query Service", "EMODnet Human Activities (WFS)", "Internet Topology Zoo (GitHub)"]
+                  "Wikidata Query Service", "EMODnet Human Activities (WFS)", "Internet Topology Zoo (GitHub)",
+                  "OurAirports", "GeoNames"]  # liminal-libs 1.73.0
     assert [a.name for a in MACHINE.apis] == names
     windows, world, netstat = MACHINE.apis[:6], MACHINE.apis[6:10], MACHINE.apis[10:]
     assert all(a.docs.startswith("https://learn.microsoft.com/") and a.verified == "2026-11-11" for a in windows)
@@ -69,7 +70,9 @@ def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
         ("https://wiki.openstreetmap.org/wiki/Overpass_API", "2026-11-18"),
         ("https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual", "2026-11-18"),
         ("https://emodnet.ec.europa.eu/en/human-activities", "2026-11-18"),
-        ("https://github.com/mroughan/InternetTopologyZoo", "2026-11-19")] if netstat_in() else [])
+        ("https://github.com/mroughan/InternetTopologyZoo", "2026-11-19"),
+        ("https://ourairports.com/data/", "2026-11-22"),  # liminal-libs 1.73.0
+        ("https://download.geonames.org/export/dump/", "2026-11-22")] if netstat_in() else [])
     assert all(a.used and a.covered and len(a.areas) > len(a.covered) for a in MACHINE.apis)  # more of each API than it uses
     assert not any(c.costs for a in MACHINE.apis for c in a.calls)  # nothing here costs money
     assert {c.name for c in cards.NETSECURITY.calls if c.writes} >= {"Remove-NetFirewallRule", "Set-NetFirewallProfile"}
@@ -124,7 +127,7 @@ def test_on_a_library_before_the_netstat_tab_it_names_what_0_6_1_named():
     and then names none of what the Netstat tab and the globe's layers reach: its cards are 0.6.1's ten."""
     class Before:  # a Firewall base without the Netstat tab (no netstat_view)
         pass
-    assert cards.APIS[10:] == cards.NETSTAT and len(cards.APIS) == 15
+    assert cards.APIS[10:] == cards.NETSTAT and len(cards.APIS) == 17
     assert cards_for(Before) == cards.APIS[:10] and not set(cards_for(Before)) & set(cards.NETSTAT)
     assert problems(cards_for(Before)) == []
 

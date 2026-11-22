@@ -48,6 +48,12 @@ import pytest
 # the Netstat tab, the hosts database and the globe's layers are liminal-libs 1.65.0's: skipped with an older library
 # (whose World Wide Web tab is 0.6.1's: test_world.py)
 ROUTES_TABLE = ["Routes"] if importlib.util.find_spec("liminal_libs.machines.routes") else []  # 1.67.0: last
+# liminal-libs 1.70.0: the legs waiting for a line are tabled after the routes
+try:
+    from liminal_libs.machines.routes import WAITING_TITLE as _WAITING
+    ROUTES_TABLE = ROUTES_TABLE + [_WAITING]
+except ImportError:
+    pass
 pytest.importorskip("liminal_libs.machines.netstat", reason="the library has no Netstat tab before liminal-libs 1.65.0")
 
 from conftest import Reached  # noqa: E402 - after the skip, as each of these
@@ -74,7 +80,7 @@ NAMES = {WEB2: "cdn.example"}  # the system's own hosts file, stood in
 THREADS = ("-hosts", "-layer-download", "traffic-watcher", "-public-address", "firewall-windows-read")
 # the data sets' digest (sha256 of apis.INFRASTRUCTURE as canonical JSON: sorted keys, no spaces, UTF-8), the same the
 # Linux firewall plugin's tests pin: the two plugins name the same data sets, and a data set changed changes both
-INFRASTRUCTURE_SHA256 = "bc0cabeff54b95c7589ce35653bc1ef8d31c1ca9bdc3f26fef2157be06fd2b4f"
+INFRASTRUCTURE_SHA256 = "8e31ca180948d874e461d61aeb336d456f39224193f4786af35e800afeaa2549"
 
 
 def sock(proto="tcp", local=LAN, local_port=51000, remote="", remote_port=0, *, at: float, state="established",
@@ -300,13 +306,15 @@ def test_the_netstat_tab_is_the_firewall_bases_after_the_world_wide_web_tab_with
 
 def test_every_data_set_is_one_the_library_reads_its_size_licence_and_credit_said_before_its_download(tmp_path):
     ids = [d["id"] for d in cards.INFRASTRUCTURE]
-    assert ids == ["osm-datacentres", "osm-cables", "osm-lines", "wikidata", "emodnet-cables", "topology-zoo"]
-    assert len(set(ids)) == 6
+    assert ids == ["osm-datacentres", "osm-cables", "osm-lines", "wikidata", "emodnet-cables", "topology-zoo",
+                   "ourairports", "geonames-cities"]
+    assert len(set(ids)) == 8  # liminal-libs 1.73.0: the airports and the cities
     for said in cards.INFRASTRUCTURE:
         d = DataSet.of(said)  # https only, a licence and a credit, a size, a known format: else a ValueError
         assert d.address().startswith("https://") and d.host in {"overpass-api.de", "query.wikidata.org",
                                                                   "ows.emodnet-humanactivities.eu",
-                                                                  "raw.githubusercontent.com"}
+                                                                  "raw.githubusercontent.com",
+                                                                  "davidmegginson.github.io", "download.geonames.org"}
         assert d.credit["text"] in d.licence or d.format == "sparql"  # the credit the licence asks for, in its words
         assert d.about == said["about"] and d.title == said["title"]  # said whole: none cut to fit
         f = form(d, tmp_path)

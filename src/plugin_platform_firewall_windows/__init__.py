@@ -99,7 +99,9 @@ from liminal_libs.machines.world import WorldView, size_words
 
 from .apis import (APIS, CITY_LITE, CITY_LITE_LICENCE, DBIP, DBIP_CREDIT, DEFENDER_API, EMODNET, NAME_SERVERS,
                    NETCONNECTION, NETSECURITY, NETSTAT, NPCAP, OVERPASS_API, SOCKETS, TOPOLOGY_ZOO, WIKIDATA)
+from .apis import GEONAMES_API, OURAIRPORTS_API
 from .apis import INFRASTRUCTURE as DATA_SETS
+from .apis import RDAP_BOOTSTRAP as RDAP_FILES
 
 __version__ = "0.7.1"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
@@ -135,7 +137,7 @@ DEFAULTS = {"inbound": "block", "outbound": "allow"}  # what Windows does where 
 UAC = "Windows asks for an administrator's permission first (UAC)."
 SYSTEMS = {"linux": "Linux", "darwin": "macOS"}  # a system that is not Windows, by the name Python gives it, in words
 DATA_SET_CARDS = {"overpass": OVERPASS_API.name, "sparql": WIKIDATA.name, "geojson": EMODNET.name,  # by a set's format
-                  "gml": TOPOLOGY_ZOO.name}
+                  "gml": TOPOLOGY_ZOO.name, "ourairports": OURAIRPORTS_API.name, "geonames": GEONAMES_API.name}
 
 
 def _platform() -> str:
@@ -404,6 +406,7 @@ class WindowsFirewallPlugin(Firewall):
     # -- the World Wide Web tab (0.6.0): its tab (TABS), its hooks and its setting (keys: LIMINAL_HOME_PLACE, home on the
     # globe) are the Firewall base's; what it reaches is named here (apis.py), since the library names no outside host
     GEOIP_URL = CITY_LITE  # DB-IP's IP to City Lite, this month's file (last month's while this month's is not out yet)
+    RDAP_BOOTSTRAP = RDAP_FILES  # liminal-libs 1.72.1: the routers' networks are looked up from these
     GEOIP_LICENCE = CITY_LITE_LICENCE  # CC BY 4.0 in plain words, and the download's size: shown before it is accepted
     ATTRIBUTION = DBIP_CREDIT  # "IP Geolocation by DB-IP", linked, wherever its places are
     PUBLIC_DNS = NAME_SERVERS  # OpenDNS's and Google's, asked for this network's public address: home, when you set none
