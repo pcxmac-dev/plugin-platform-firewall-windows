@@ -58,6 +58,11 @@ ROUTES_TABLE = ["Routes"] if importlib.util.find_spec("liminal_libs.machines.rou
 # liminal-libs 1.70.0: the legs waiting for a line are tabled after the routes
 try:
     from liminal_libs.machines.routes import WAITING_TITLE as _WAITING
+    try:  # liminal-libs 1.74.0: the routes hop by hop, between them
+        from liminal_libs.machines.routes import HOPS_TITLE as _HOPS
+        ROUTES_TABLE = ROUTES_TABLE + [_HOPS]
+    except ImportError:
+        pass
     ROUTES_TABLE = ROUTES_TABLE + [_WAITING]
 except ImportError:
     pass
