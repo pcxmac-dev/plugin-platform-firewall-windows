@@ -394,8 +394,8 @@ ASN_LITE_LICENCE = (
     "DB-IP's IP to ASN Lite is free under the Creative Commons Attribution 4.0 International licence (CC BY 4.0, "
     "creativecommons.org/licenses/by/4.0): it may be used, shared and changed for any purpose, as long as DB-IP is "
     "credited. So wherever its networks are shown, this page says \"IP Geolocation by DB-IP\" with a link to "
-    "db-ip.com. It comes as it is, with no warranty. The download is about 9.2 MB (485,292 ranges); DB-IP puts out a "
-    "new one each month."
+    "db-ip.com. It comes as it is, with no warranty. The download is about 5 MB (9.2 MB unpacked, 485,292 ranges); "
+    "DB-IP puts out a new one each month."
 )
 DBIP_CREDIT = {"text": "IP Geolocation by DB-IP", "url": "https://db-ip.com"}  # the link DB-IP's Lite licence asks for
 # The name servers asked directly (no resolver between) for the asker's own address, which places home on the globe when
