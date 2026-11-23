@@ -334,7 +334,8 @@ def test_the_tab_is_the_firewall_bases_with_db_ips_file_its_credit_and_the_name_
     # the install is run by the platform as a job, its log the job's panel (the base's JOB_HOOKS, kept by the plugin);
     # from liminal-libs 1.65.0 a data set's download too
     assert hooks["world"].startswith("() ") and hooks["world_geoip"].startswith("(accept_licence=False, log=None) ")
-    jobs = ("world_geoip", "world_layer_get") if NETSTAT else ("world_geoip",)
+    jobs = (("world_geoip", "world_layer_get") if NETSTAT else ("world_geoip",)) + (
+        ("world_asn",) if "world_asn" in Firewall.JOB_HOOKS else ())  # liminal-libs 1.75.0: the ASN file's install
     assert MACHINE.JOB_HOOKS == Firewall.JOB_HOOKS == jobs
     assert set(MACHINE.JOB_HOOKS) <= set(hooks)
     assert {"refresh", "set_profile", "set_network", "allow", "move_rules"} <= set(hooks)  # its own and the base's, as before
@@ -567,8 +568,11 @@ def test_db_ips_file_is_downloaded_only_once_its_licence_is_accepted_and_its_pla
     view = fw.world_view()
     assert wait_for(lambda: view.watcher.status()["packets"] == 8)
     page = fw.ask("world")
-    # this month's file is in: nothing more is offered for it (from liminal-libs 1.65.0 the data sets' downloads are)
-    assert [f["id"] for f in page.get("forms") or ()] == layer_forms() and "actions" not in page
+    # this month's file is in: nothing more is offered for it (from liminal-libs 1.65.0 the data sets' downloads are;
+    # from 1.75.0 the ASN file, now that the GeoIP file is in)
+    asn = [world.ASN_FORM] if hasattr(world, "ASN_FORM") else []
+    assert [f["id"] for f in page.get("forms") or ()] == asn + layer_forms()
+    assert [a["form"] for a in page.get("actions") or ()] == asn
     g = page["globe"]
     assert g["attribution"] == MACHINE.ATTRIBUTION  # credited wherever its places are: the globe ...
     assert "Places: IP Geolocation by DB-IP, https://db-ip.com." in titles(page)["Places"]["note"]  # and Places
@@ -652,13 +656,16 @@ def test_detach_ends_the_watching_and_forgets_the_tab(tmp_path):
 def test_the_cards_name_what_the_tab_reaches_as_the_plugin_and_the_library_reach_it():
     assert problems(MACHINE.apis) == [] and {cards.NPCAP, cards.DBIP, cards.OPENDNS, cards.GOOGLE} <= set(MACHINE.apis)
     # DB-IP's: the one download the tab makes, at the address the plugin names, and the file's credit and licence
-    [download] = [c for c in cards.DBIP.used if c.name.startswith("GET ")]
+    [download] = [c for c in cards.DBIP.used if c.name.startswith("GET ") and "city-lite" in c.name]
     assert download.name == "GET " + MACHINE.GEOIP_URL.replace("{year}", "<year>").replace("{month}", "<month>")
+    # liminal-libs 1.75.0: and the ASN file's, beside it
+    [asn] = [c for c in cards.DBIP.used if c.name.startswith("GET ") and "asn-lite" in c.name]
+    assert asn.name == "GET " + MACHINE.GEOIP_ASN_URL.replace("{year}", "<year>").replace("{month}", "<month>")
     assert cards.DBIP.base.startswith(download.name[4:])
     assert cards.DBIP.link("terms") == "https://creativecommons.org/licenses/by/4.0/"
     assert cards.DBIP.docs == "https://db-ip.com/db/lite.php"  # its licence and attribution page
-    assert {a.name for a in cards.DBIP.covered} == {"IP to City Lite", "The MMDB file", "The credit"}
-    assert {c.name for c in cards.DBIP.used} == {download.name, "maxminddb.open_database(<file>, MODE_MMAP_EXT)",
+    assert {a.name for a in cards.DBIP.covered} == {"IP to City Lite", "The MMDB file", "The credit", "IP to ASN Lite"}
+    assert {c.name for c in cards.DBIP.used} == {download.name, asn.name, "maxminddb.open_database(<file>, MODE_MMAP_EXT)",
                                                   "Reader.get(<address>)"}
     assert "maxminddb.open_database(str(path), maxminddb.MODE_MMAP_EXT)" in inspect.getsource(geo)  # how the library opens it
     assert "self._reader.get(address)" in inspect.getsource(geo.GeoIP)
@@ -746,3 +753,14 @@ def test_the_tabs_facts_are_what_it_knows_and_asking_them_starts_nothing(tmp_pat
         " (let go while the tab is not watched; opened again at its next ask)")
     assert len(feeds) == 1 and fw.made == 1  # asking for the facts started nothing and made nothing
     fw.detach()
+
+
+def test_its_asn_file_is_db_ips_ip_to_asn_lite_under_the_same_licence():
+    """liminal-libs 1.75.0: DB-IP's IP to ASN Lite beside the city file, each network's AS number and operator (its
+    download page read 2026-11-22: 9.2 MB, 485,292 ranges, CC BY 4.0, the same credit)."""
+    assert MACHINE.GEOIP_ASN_URL == cards.ASN_LITE == "https://download.db-ip.com/free/dbip-asn-lite-{year}-{month}.mmdb.gz"
+    assert world.month_url(MACHINE.GEOIP_ASN_URL, 2026, 11) == "https://download.db-ip.com/free/dbip-asn-lite-2026-11.mmdb.gz"
+    for words in ("Creative Commons Attribution 4.0", "(CC BY 4.0", "\"IP Geolocation by DB-IP\"", "9.2 MB", "485,292"):
+        assert words in MACHINE.GEOIP_ASN_LICENCE, words
+    assert next(a for a in cards.DBIP.areas if a.name == "IP to ASN Lite").covered
+    assert any(c.area == "IP to ASN Lite" and c.used and "dbip-asn-lite" in c.name for c in cards.DBIP.calls)

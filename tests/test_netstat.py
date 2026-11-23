@@ -301,7 +301,8 @@ def test_the_netstat_tab_is_the_firewall_bases_after_the_world_wide_web_tab_with
     assert {"world_show", "world_direction", "world_within", "world_pick", "world_layer",
             "world_layer_remove"} <= set(hooks)
     # a data set's download is a job the page may cancel; a layer's geometry a read (no log line)
-    assert MACHINE.JOB_HOOKS == ("world_geoip", "world_layer_get") and MACHINE.CANCEL_HOOKS == ("world_layer_get",)
+    asn = ("world_asn",) if "world_asn" in Firewall.JOB_HOOKS else ()  # liminal-libs 1.75.0: the ASN file's install
+    assert MACHINE.JOB_HOOKS == ("world_geoip", "world_layer_get", *asn) and MACHINE.CANCEL_HOOKS == ("world_layer_get",)
     assert "world_layer" in MACHINE.READ_HOOKS
     from liminal_libs.machines import firewall as firewall_module  # liminal-libs 1.74.0: when the traffic is watched
     watching = ["LIMINAL_TRAFFIC_WATCHING"] if hasattr(firewall_module, "WATCH_KEY") else []

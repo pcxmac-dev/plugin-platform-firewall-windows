@@ -100,6 +100,7 @@ from liminal_libs.machines.world import WorldView, size_words
 from .apis import (APIS, CITY_LITE, CITY_LITE_LICENCE, DBIP, DBIP_CREDIT, DEFENDER_API, EMODNET, NAME_SERVERS,
                    NETCONNECTION, NETSECURITY, NETSTAT, NPCAP, OVERPASS_API, SOCKETS, TOPOLOGY_ZOO, WIKIDATA)
 from .apis import GEONAMES_API, OURAIRPORTS_API
+from .apis import ASN_LITE, ASN_LITE_LICENCE
 from .apis import INFRASTRUCTURE as DATA_SETS
 from .apis import RDAP_BOOTSTRAP as RDAP_FILES
 
@@ -408,6 +409,10 @@ class WindowsFirewallPlugin(Firewall):
     GEOIP_URL = CITY_LITE  # DB-IP's IP to City Lite, this month's file (last month's while this month's is not out yet)
     RDAP_BOOTSTRAP = RDAP_FILES  # liminal-libs 1.72.1: the routers' networks are looked up from these
     GEOIP_LICENCE = CITY_LITE_LICENCE  # CC BY 4.0 in plain words, and the download's size: shown before it is accepted
+    # liminal-libs 1.75.0: DB-IP's IP to ASN Lite beside it, each network's AS number and operator (an older library
+    # offers neither)
+    GEOIP_ASN_URL = ASN_LITE
+    GEOIP_ASN_LICENCE = ASN_LITE_LICENCE
     ATTRIBUTION = DBIP_CREDIT  # "IP Geolocation by DB-IP", linked, wherever its places are
     PUBLIC_DNS = NAME_SERVERS  # OpenDNS's and Google's, asked for this network's public address: home, when you set none
     # -- the Netstat tab, the hosts database and the globe's filters and layers (0.7.0): the Firewall base's

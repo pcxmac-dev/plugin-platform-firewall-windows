@@ -387,6 +387,16 @@ CITY_LITE_LICENCE = (
     "It comes as it is, with no warranty, and its places are approximate. The download is about 60 MB (about 121 MB "
     "unpacked); DB-IP puts out a new one each month."
 )
+# liminal-libs 1.75.0: one month's IP to ASN Lite, the ASN file beside it (each network's AS number and operator in the
+# hop table), as DB-IP's download page gives it (read 2026-11-22), the library filling in {year} and {month}
+ASN_LITE = DBIP_FREE + "dbip-asn-lite-{year}-{month}.mmdb.gz"
+ASN_LITE_LICENCE = (
+    "DB-IP's IP to ASN Lite is free under the Creative Commons Attribution 4.0 International licence (CC BY 4.0, "
+    "creativecommons.org/licenses/by/4.0): it may be used, shared and changed for any purpose, as long as DB-IP is "
+    "credited. So wherever its networks are shown, this page says \"IP Geolocation by DB-IP\" with a link to "
+    "db-ip.com. It comes as it is, with no warranty. The download is about 9.2 MB (485,292 ranges); DB-IP puts out a "
+    "new one each month."
+)
 DBIP_CREDIT = {"text": "IP Geolocation by DB-IP", "url": "https://db-ip.com"}  # the link DB-IP's Lite licence asks for
 # The name servers asked directly (no resolver between) for the asker's own address, which places home on the globe when
 # you set no place: (the name, its type, the server, whose), the hw-stats plugin's own (its network.PUBLIC_SERVERS). The
@@ -542,7 +552,8 @@ DBIP = Api(
         Area("The credit", "attribution to DB-IP.com, with a link back wherever its results are shown", DBIP_DB + "lite.php",
              covered="\"IP Geolocation by DB-IP\", linked to db-ip.com, on the globe and with the Places table while the file is open"),
         Area("IP to Country Lite", "each range's continent and country alone (8.1 MB)", DBIP_DB + "download/ip-to-country-lite"),
-        Area("IP to ASN Lite", "each range's network: its AS number and organisation (9.2 MB)", DBIP_DB + "download/ip-to-asn-lite"),
+        Area("IP to ASN Lite", "each range's network: its AS number and organisation (9.2 MB)", DBIP_DB + "download/ip-to-asn-lite",
+             covered="each network's AS number and operator, in the hop table and with the places: read on this PC from the data folder's geoip/asn/, beside the GeoIP file, memory-mapped as it is"),
         Area("The CSV files", "each Lite file as CSV, for a database to import (City Lite's is 660 MB)",
              DBIP_DB + "download/ip-to-city-lite"),
         Area("The full databases", "DB-IP's commercial databases, updated daily: IP to Country, Location, ISP, Location + ISP",
@@ -567,7 +578,7 @@ DBIP = Api(
         Call("GET https://download.db-ip.com/free/dbip-country-lite-<year>-<month>.mmdb.gz", "one month's IP to Country Lite",
              "IP to Country Lite", docs=DBIP_DB + "download/ip-to-country-lite"),
         Call("GET https://download.db-ip.com/free/dbip-asn-lite-<year>-<month>.mmdb.gz", "one month's IP to ASN Lite",
-             "IP to ASN Lite", docs=DBIP_DB + "download/ip-to-asn-lite"),
+             "IP to ASN Lite", used="Install the ASN file… and Update…, once the GeoIP file is in and you accept its licence, run by the platform as a job: this month's, else last month's; https on every hop, from download.db-ip.com alone", docs=DBIP_DB + "download/ip-to-asn-lite"),
         Call("GET https://download.db-ip.com/free/dbip-city-lite-<year>-<month>.csv.gz", "one month's IP to City Lite as CSV",
              "The CSV files", docs=DBIP_DB + "download/ip-to-city-lite"),
     ),
