@@ -233,6 +233,21 @@ def test_each_change_runs_as_an_administrator_and_is_read_back():
         fw.set_rule("gone", "off")
 
 
+def test_a_rule_made_twice_is_refused_before_anything_runs():
+    # the review of 2026-11-21, item 26: "Make a rule" asked twice made two rules the same
+    fake = FakeWindows(rules=[*BUILTINS, win_rule("{L1}", "web", "Liminal", local="80")])
+    fw = plugin(fake)
+    fw.status()
+    for name in ("web", "WEB"):
+        with pytest.raises(ValueError, match="a Liminal rule named “.+” is there already: remove it first"):
+            fw.make_rule(name, "in", "allow", "tcp", "80")
+    assert not any("New-NetFirewallRule" in s for s in fake.scripts)
+    assert [r["Name"] for r in fake.rules].count("web") == 1
+    # another's rule of that name (not in the group Liminal) is no bar
+    fake = FakeWindows(rules=[*BUILTINS, win_rule("{O1}", "web", local="80")])
+    assert plugin(fake).make_rule("web", "in", "allow", "tcp", "80")["ok"]
+
+
 def test_a_profile_off_or_open_by_default_is_asked_again_and_said_after():
     fake = FakeWindows()
     fw = plugin(fake)

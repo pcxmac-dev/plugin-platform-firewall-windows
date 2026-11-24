@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plugin-platform-firewall-windows"
-version = "0.7.1"  # the plugin's own release (CHANGELOG.md); the app shows it on the Plugins view
+version = "0.7.2"  # the plugin's own release (CHANGELOG.md); the app shows it on the Plugins view
 description = """\
   Windows Firewall for Liminal: Windows Defender Firewall, the networks and Microsoft Defender on this PC, every \
   rule and profile read, queried and changed on your word; the World Wide Web tab: this PC's traffic on a globe; and \

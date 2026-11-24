@@ -104,7 +104,7 @@ from .apis import ASN_LITE, ASN_LITE_LICENCE
 from .apis import INFRASTRUCTURE as DATA_SETS
 from .apis import RDAP_BOOTSTRAP as RDAP_FILES
 
-__version__ = "0.7.1"
+__version__ = "0.7.2"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -776,6 +776,11 @@ class WindowsFirewallPlugin(Firewall):
         chosen = [p.strip().capitalize() for p in str(profiles or "any").replace(";", ",").split(",") if p.strip()]
         if not chosen or any(p not in ("Any", *PROFILE_NAMES) for p in chosen):
             raise ValueError("profiles are any, or Domain, Private and Public")
+        # Windows makes a second rule of a DisplayName already there, so "Make a rule" asked twice made two the same
+        # (the review of 2026-11-21, item 26): one of Liminal's by that name is refused before anything runs, as the
+        # Linux plugin and the library's Firewall.allow refuse it. Windows matches DisplayNames without case.
+        if any(r.owned and r.name.casefold() == title.casefold() for r in self._snap().rules):
+            raise ValueError(f"a Liminal rule named “{title}” is there already: remove it first")
         parts = [f"New-NetFirewallRule -Group {quote(GROUP)} -DisplayName {quote(title)} -Description {quote('made on the Liminal platform')}",
                  f"-Direction {DIRECTIONS[direction]} -Action {ACTIONS[action]} -Protocol {PROTOCOLS[protocol]}",
                  f"-Profile {','.join(chosen)}"]

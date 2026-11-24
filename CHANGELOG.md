@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.2 (2026-11-24)
+
+A rule made twice is refused (the review of 2026-11-21, item 26, finding 7).
+
+- **"Make a rule" asked twice no longer makes two rules the same.** Windows makes a second rule of a DisplayName that
+  is there already, and the check after New-NetFirewallRule only found what it had made. `make_rule` now looks first:
+  one of Liminal's rules (the group Liminal) of that name, in any case, is refused in words ("is there already: remove
+  it first") before anything runs, as the Linux plugin and the library's `Firewall.allow` refuse it. Another's rule of
+  the same name is no bar. Test: `test_a_rule_made_twice_is_refused_before_anything_runs`.
+
 ## 0.7.1 (2026-11-19)
 
 Backbone networks on the globe, cables of every telecom category, and a globe that zooms to 96x. The user,
