@@ -30,7 +30,10 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   turned off instead), or made (in the rule group "Liminal"); a profile's firewall turned on or off, its default for
   what comes in or goes out, its notifications; a network made private or public. Turning a profile off, or letting
   everything in by default, is asked a second time: this PC may be a router's DMZ host. A change needs an
-  administrator: run as one, or Windows asks (UAC).
+  administrator: run as one, or Windows asks (UAC). Since 0.7.3 the changes are asked only from its page
+  (PAGE_ONLY_HOOKS, the base's allow and remove among them): another plugin's ask is refused, and the platform asks
+  its login whether you are at the page before it asks one over HTTP. The setup and the command line call the code
+  directly, as before.
 - The library's Firewall base keeps its setup (on, exposure, the services' rules) and Liminal's own rules' hooks.
 - What it attaches to (0.5.0, plugin API 2.2; the user, 2026-11-11: "each plugin should reflect the the API its attached
   to, and present links that provide documentation"): Windows PowerShell and UAC, the NetSecurity, NetConnection and
@@ -72,6 +75,13 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   map", "also underwater lines"). Off Windows the plugin is not for the machine at all (not_for_here): nothing is
   read, recorded, kept or removed there, and every hook of its two tabs is refused in words (make_netstat_view). On a
   library before 1.65.0 it loads as 0.6.1 did, its World Wide Web tab as it was, and names none of what those reach.
+- run(), and who may ask a change (0.7.3; the independent review's finding PLT-H1, checked 2026-11-23, and the review
+  of its fix, 2026-11-24): run() runs a PowerShell command line as this process runs it, never through Windows' prompt
+  (UAC), and a command Windows denies is said, never asked again elevated. liminal-platform's POST
+  /api/machines/{name}/run handed a plugin's run() any words a program on this PC sent: that route is gone (the user,
+  2026-11-23: "Remove it"; liminal-platform 0.34.1), and only a command line asks run(), in its own process. The
+  changes, which run at once when the platform is an administrator, are its PAGE_ONLY_HOOKS: before, any program on
+  this PC asked them with two headers, the second confirmation being only an argument.
 
     python -m plugin_platform_firewall_windows status | rules [PRESET] | find WORDS [--port N] [--in|--out]
         [--allow|--block] | profiles | networks | set-rule ID on|off | remove-rule ID | add-rule NAME ... |
@@ -104,7 +114,7 @@ from .apis import ASN_LITE, ASN_LITE_LICENCE
 from .apis import INFRASTRUCTURE as DATA_SETS
 from .apis import RDAP_BOOTSTRAP as RDAP_FILES
 
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -404,6 +414,14 @@ class WindowsFirewallPlugin(Firewall):
     # the base's hooks include world and world_geoip, the World Wide Web tab's page and its GeoIP file's install (0.6.0),
     # which the platform runs as a job (the base's JOB_HOOKS, kept: the plugin runs no job of its own)
     HOOKS = (*Firewall.HOOKS, "refresh", "find_rules", "show_rules", "set_rule", "remove_rule", "make_rule", "set_profile", "set_network")
+    # Its changes, asked only from its page (0.7.3, the review of PLT-H1's fix, 2026-11-24; liminal-libs 1.66.0's
+    # apps/asking.py): another plugin's ask is refused (403), and liminal-platform 0.34.0 refuses one over HTTP (401)
+    # unless its login shows that you are at the page. Before, any program on this PC could ask them with two headers:
+    # on a platform run as an administrator the Public profile's firewall turned off, or a rule made letting everything
+    # in, at once and with no prompt, the second confirmation (accept_risk) being only an argument. The base's allow and
+    # remove among them (Liminal's own rules): the setup and the command line call their code directly, not through an
+    # ask. Its reads and queries are asked by anyone, as before.
+    PAGE_ONLY_HOOKS = ("set_rule", "remove_rule", "make_rule", "set_profile", "set_network", "allow", "remove")
     # -- the World Wide Web tab (0.6.0): its tab (TABS), its hooks and its setting (keys: LIMINAL_HOME_PLACE, home on the
     # globe) are the Firewall base's; what it reaches is named here (apis.py), since the library names no outside host
     GEOIP_URL = CITY_LITE  # DB-IP's IP to City Lite, this month's file (last month's while this month's is not out yet)
@@ -706,7 +724,10 @@ class WindowsFirewallPlugin(Firewall):
         return [(int(r["Port"]), str(r["Rule"])) for r in self.ps.json(script, timeout=600)]
 
     def run(self, *command: str, **options) -> str:
-        """A PowerShell command line on this PC (Get-NetFirewallProfile; netsh advfirewall show allprofiles), its output."""
+        """A PowerShell command line on this PC (Get-NetFirewallProfile; netsh advfirewall show allprofiles), its
+        output, run as this process runs it and never through Windows' prompt (UAC): one Windows denies is a
+        CommandError (denied), never asked again elevated, whatever LIMINAL_ELEVATE says. Only a command line asks it
+        (0.7.3): no route of liminal-platform's asks it since its 0.34.1 (the review's PLT-H1)."""
         return self.ps.run(" ".join(command))
 
     # -- changes, each run as an administrator --------------------------------------------------------------

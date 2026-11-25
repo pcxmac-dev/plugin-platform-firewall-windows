@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.7.3 (2026-11-24)
+
+The changes are asked only from the page, and run() never asks for an administrator (the independent review's finding
+PLT-H1, rated high, checked 2026-11-23). The user, 2026-11-23, of liminal-platform's route that handed a plugin's run()
+any words: "Remove it" (gone since liminal-platform 0.34.1). And from the review of this release's first draft,
+2026-11-24, each finding checked a second time: the changes are asked only from the page, and the tests set
+`LIMINAL_ELEVATE=prompt` where the plugin reads it.
+
+- **The changes are asked only from the page** (`PAGE_ONLY_HOOKS`, liminal-libs 1.66.0's word; the review's first
+  finding, rated medium, there since 0.2.0): `set_rule`, `remove_rule`, `make_rule`, `set_profile` and `set_network`,
+  and the base's `allow` and `remove` (Liminal's own rules). Another plugin's ask of one is refused (403), and
+  liminal-platform 0.34.0 refuses one over HTTP (401) unless its login shows that you are at the page. Before, any
+  program on this PC, of any account, asked them with the gates PLT-H1 named: the bind to 127.0.0.1, a Host header the
+  client chooses and a constant header anyone can send. On a platform run as an administrator, `set_profile` with
+  `["Public", "off", null, null, null, true]` turned the Public profile's firewall off at once, with no prompt (its
+  "asked a second time" is `accept_risk`, an argument the asker sets), and `make_rule` with `["x", "in", "allow",
+  "any"]` let everything in on every profile; on one that is not, Windows asked you (UAC) for a change nobody had
+  asked for. A platform that holds no login asks them as before. The setup and the command line call the plugin's
+  code directly, not through an ask, so they work as before; so do its reads and queries (`status`, `refresh`,
+  `find_rules`, `show_rules`, its tabs). The 401 rests on the login's word that your browser is signed in, and a
+  local login signs `default` in with no password: a proof that a program cannot make is the login's and the
+  platform's to give.
+- **run() never asks for an administrator**, whether or not the platform is one: a PowerShell command line runs as the
+  platform runs, and one Windows denies is said ("Access is denied.") and never asked again through UAC, even with
+  `LIMINAL_ELEVATE=prompt`. It has been the library's `PowerShell.run` since 0.1.0; only its docstring changes. No
+  route of the platform's asks it any more (liminal-platform 0.34.1): this command line's `run -- COMMAND` and
+  `liminal-platform machine firewall-windows run -- COMMAND` ask it in their own process.
+- Tests: `tests/test_who_asks.py`, through the library's own App, on a platform run as an administrator and on one
+  that is not: the changes refused to another plugin and to no one (the review's two bodies among them), nothing run
+  nor read and Windows not asked; the page's ask run, at once or through UAC; the reads and queries asked by anyone.
+  `tests/test_run.py`, over a stand-in powershell.exe and a stand-in prompt (nothing runs, nothing is elevated): a
+  command runs once, as it is; one Windows denies is said and never asked again; the command line's `run -- COMMAND`
+  is the same run. `LIMINAL_ELEVATE=prompt` is set in this process's environment too, where the plugin as shipped
+  reads it, not only in the stand-in's (the review's second finding, rated low): a run() that read it there and asked
+  through UAC passed wherever the suite ran without it.
+
 ## 0.7.2 (2026-11-24)
 
 A rule made twice is refused (the review of 2026-11-21, item 26, finding 7).

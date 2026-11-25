@@ -88,7 +88,10 @@ in it. Each heading lists up to 100 rules, and Find narrows a longer one.
 **Changes** are each asked for in a form and confirmed. They run at once when the platform runs as an administrator;
 otherwise Windows asks for an administrator's permission (UAC). Turning a profile off, or letting everything in by
 default, is refused until you accept it a second time: this PC may be a router's DMZ host, and then every program
-listening here could be reached from the internet.
+listening here could be reached from the internet. Since 0.7.3 they are asked only from the page: `set_rule`,
+`remove_rule`, `make_rule`, `set_profile`, `set_network` and the base's `allow` and `remove` are its `PAGE_ONLY_HOOKS`,
+so another plugin's ask of one is refused, and the platform asks its login whether you are at the page before it asks
+one over HTTP. Before, any program on this PC could ask a change itself, its second confirmation included.
 
 **The setup** works as before: `enable` (every profile on), `exposure` (no rule lets another machine reach the
 framework's pages, 8765, 8775, 8785, 8795; a finding, never a change) and `rules` (the ports the framework's services
@@ -266,11 +269,14 @@ python -m plugin_platform_firewall_windows set-profile Public --on --inbound blo
 python -m plugin_platform_firewall_windows set-network 11 private
 python -m plugin_platform_firewall_windows setup            # everything; or one step: setup exposure
 python -m plugin_platform_firewall_windows exposure
+python -m plugin_platform_firewall_windows run -- Get-NetFirewallProfile -Name Public   # as you: never through UAC
 ```
 
 A rule's id (in brackets in `rules` and `find`) is what `set-rule` and `remove-rule` name. A change needs an
 administrator: run as one, or Windows asks (UAC). `set-profile` refuses `--off` or `--inbound allow` without
-`--accept-risk`.
+`--accept-risk`. `run` runs a PowerShell command line as you, never through UAC: one Windows denies is said, not
+asked again. It is the command line's alone (and `liminal-platform machine firewall-windows run -- COMMAND`'s): no
+route of the platform's asks it since liminal-platform 0.34.1.
 
 ## Its API
 
