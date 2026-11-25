@@ -328,8 +328,8 @@ def geo_folder(tmp_path):
 # -- what the plugin names for the tab -----------------------------------------------------------------------------------------
 def test_the_tab_is_the_firewall_bases_with_db_ips_file_its_credit_and_the_name_servers():
     # asked every 2 s while shown; from liminal-libs 1.65.0 the Netstat tab after it (0.7.0: test_netstat.py)
-    assert MACHINE.TABS == Firewall.TABS and MACHINE.TABS[0] == Tab("world", "World Wide Web", "world", 2.0)
-    assert len(MACHINE.TABS) == (2 if NETSTAT else 1)
+    assert MACHINE.TABS[:len(Firewall.TABS)] == Firewall.TABS and MACHINE.TABS[0] == Tab("world", "World Wide Web", "world", 2.0)
+    assert len(MACHINE.TABS) == (2 if NETSTAT else 1) + 1  # 0.8.0: the Networks tab last
     hooks = MACHINE.interface()["hooks"]
     # the install is run by the platform as a job, its log the job's panel (the base's JOB_HOOKS, kept by the plugin);
     # from liminal-libs 1.65.0 a data set's download too

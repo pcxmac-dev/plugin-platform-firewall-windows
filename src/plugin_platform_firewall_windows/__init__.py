@@ -82,6 +82,15 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   2026-11-23: "Remove it"; liminal-platform 0.34.1), and only a command line asks run(), in its own process. The
   changes, which run at once when the platform is an administrator, are its PAGE_ONLY_HOOKS: before, any program on
   this PC asked them with two headers, the second confirmation being only an argument.
+- Services' networks (0.8.0; liminal-libs 1.96.0's NetworkHost, network.py): the container plugins you let ask it for
+  networks (its Networks tab) get each service's segment from Liminal's pool, a route into WSL through the VM's address
+  in the active store (New-NetRoute -PolicyStore ActiveStore), the names in your domain forward and reverse (you set the
+  domain: none is picked for you, and no service is placed until you do), the DHCP records of every container their
+  segments hold, and, on Expose…, a port proxy per port on this PC's address on your network to the part's reserved
+  address (decision 2 b, b1), with its rule from your local subnet on Private and Domain alone. Every change is a plan
+  you approve on the page, carried out by one elevated script (UAC); Re-point… makes stale routes and proxies again.
+  Making a network Private is asked a second time, naming each rule Private would then let in from beyond your subnet.
+  Windows' excluded port ranges are read for the container plugins (excluded_ports).
 
     python -m plugin_platform_firewall_windows status | rules [PRESET] | find WORDS [--port N] [--in|--out]
         [--allow|--block] | profiles | networks | set-rule ID on|off | remove-rule ID | add-rule NAME ... |
@@ -113,8 +122,10 @@ from .apis import GEONAMES_API, OURAIRPORTS_API
 from .apis import ASN_LITE, ASN_LITE_LICENCE
 from .apis import INFRASTRUCTURE as DATA_SETS
 from .apis import RDAP_BOOTSTRAP as RDAP_FILES
+from .network import EXCLUDED, WindowsNetwork
+from liminal_libs.machines.segments import NetworkHost
 
-__version__ = "0.7.3"
+__version__ = "0.8.0"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -396,7 +407,7 @@ class RiskRefused(ValueError):
         self.accept = accept
 
 
-class WindowsFirewallPlugin(Firewall):
+class WindowsFirewallPlugin(Firewall, WindowsNetwork):
     name = "firewall-windows"
     ICON = "wallglobe"  # a brick wall with the globe behind it (liminal-libs 1.34.0; the user's picture: "this one for windows firewall")
     SECTION = "os"  # drawn under the platform's OS plugins (liminal-platform 0.26.0)
@@ -413,7 +424,14 @@ class WindowsFirewallPlugin(Firewall):
     order = 710
     # the base's hooks include world and world_geoip, the World Wide Web tab's page and its GeoIP file's install (0.6.0),
     # which the platform runs as a job (the base's JOB_HOOKS, kept: the plugin runs no job of its own)
-    HOOKS = (*Firewall.HOOKS, "refresh", "find_rules", "show_rules", "set_rule", "remove_rule", "make_rule", "set_profile", "set_network")
+    HOOKS = tuple(dict.fromkeys((*Firewall.HOOKS, "refresh", "find_rules", "show_rules", "set_rule", "remove_rule",
+                                 "make_rule", "set_profile", "set_network",
+                                 *NetworkHost.HOOKS, EXCLUDED)))  # 0.8.0: services' networks (network.py)
+    TABS = (*Firewall.TABS, *NetworkHost.TABS)  # 0.8.0: the Networks tab after the World Wide Web and Netstat tabs
+    ASKS = (*getattr(Firewall, "ASKS", ()), *NetworkHost.ASKS)
+    # 0.8.0: Windows' excluded port ranges, read by anyone (the container plugins), beside both bases' reads
+    READ_HOOKS = tuple(dict.fromkeys((*Firewall.READ_HOOKS, *NetworkHost.READ_HOOKS, EXCLUDED)))
+    SERVICE_HOOKS = (*NetworkHost.SERVICE_HOOKS, EXCLUDED)
     # Its changes, asked only from its page (0.7.3, the review of PLT-H1's fix, 2026-11-24; liminal-libs 1.66.0's
     # apps/asking.py): another plugin's ask is refused (403), and liminal-platform 0.34.0 refuses one over HTTP (401)
     # unless its login shows that you are at the page. Before, any program on this PC could ask them with two headers:
@@ -421,7 +439,13 @@ class WindowsFirewallPlugin(Firewall):
     # in, at once and with no prompt, the second confirmation (accept_risk) being only an argument. The base's allow and
     # remove among them (Liminal's own rules): the setup and the command line call their code directly, not through an
     # ask. Its reads and queries are asked by anyone, as before.
-    PAGE_ONLY_HOOKS = ("set_rule", "remove_rule", "make_rule", "set_profile", "set_network", "allow", "remove")
+    PAGE_ONLY_HOOKS = (*NetworkHost.PAGE_ONLY_HOOKS,
+                       "set_rule", "remove_rule", "make_rule", "set_profile", "set_network", "allow", "remove",
+                       # 0.8.0 (service-containers-networking §8.1): the base's other changes too, its labels and moves,
+                       # the hosts' recording and forgetting, the traffic's watching, the downloads; NetworkHost's own
+                       # (approve_plan, the grants, the domain, Re-point…, Withdraw…) add up from its class
+                       "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget",
+                       "world_watching", "world_geoip", "world_asn", "world_layer_get", "world_layer_remove")
     # -- the World Wide Web tab (0.6.0): its tab (TABS), its hooks and its setting (keys: LIMINAL_HOME_PLACE, home on the
     # globe) are the Firewall base's; what it reaches is named here (apis.py), since the library names no outside host
     GEOIP_URL = CITY_LITE  # DB-IP's IP to City Lite, this month's file (last month's while this month's is not out yet)
@@ -439,12 +463,24 @@ class WindowsFirewallPlugin(Firewall):
     # user downloads on the World Wide Web tab
     INFRASTRUCTURE = DATA_SETS
 
-    def __init__(self, powershell: PowerShell | None = None, elevated=None, clock=time.time, system: str | None = None):
+    def __init__(self, powershell: PowerShell | None = None, elevated=None, clock=time.time, system: str | None = None,
+                 book=None, platform: str = ""):
         self.ps = powershell if powershell is not None else PowerShell()
         self._elevated = elevated if elevated is not None else is_elevated  # a test's stand-in
         self._clock = clock
         self._system = system  # a test's (win32, linux, darwin); None: the system the platform runs on (_platform)
         self._rt = _Runtime()
+        # 0.8.0: services' networks: the network database in the data folder (liminal-libs 1.96.0's netbook), opened
+        # per call; a test's own book
+        from liminal_libs.netbook import NetBook
+
+        NetworkHost.__init__(self, wall=clock, book=book if book is not None else NetBook(), platform=platform)
+
+    def app_stopping(self) -> None:
+        """The platform stops: the base's (the hosts' recording ended), then its network works cancelled and joined
+        and its plans forgotten (0.8.0)."""
+        Firewall.app_stopping(self)
+        self.network_stopping()
 
     def not_for_here(self) -> str:
         """Why this machine is not one the plugin is for, in words ("" when it is): Windows Defender Firewall is
@@ -854,8 +890,10 @@ class WindowsFirewallPlugin(Firewall):
             f"firewall {'on' if after.get('enabled') else 'off'}; inbound {default_of(after.get('inbound'), 'inbound')}; "
             f"outbound {default_of(after.get('outbound'), 'outbound')}; notifications {'on' if after.get('notify') == 'True' else 'off'}"]}
 
-    def set_network(self, index, category, label=None) -> dict:
-        """A network made private (trusted: the Private profile applies) or public (the Public profile applies)."""
+    def set_network(self, index, category, label=None, accept_risk=False) -> dict:
+        """A network made private (trusted: the Private profile applies) or public (the Public profile applies). From
+        Public to Private only once accepted in so many words (0.8.0, `accept_risk`), naming each rule turned on that
+        Private would then let in from beyond your local subnet: this PC may be a router's DMZ host."""
         want = str(category or "").strip().capitalize()
         if want not in ("Private", "Public"):
             raise ValueError(f"a network is made private or public, not {category!r}")
@@ -865,6 +903,13 @@ class WindowsFirewallPlugin(Firewall):
             raise ValueError(f"no network on interface {index} (read {when(snap.at)})")
         if net["category"] == want:
             return {"said": f"{net['interface']} ({net['name']}) is {want.lower()} already", "ok": True}
+        if want == "Private" and accept_risk is not True:
+            wide = private_wider(snap)
+            raise RiskRefused(f"making {net['interface']} ({net['name']}) private turns on every rule scoped to the "
+                              "Private profile for it" + (": these let in from beyond your local subnet: "
+                                                          + "; ".join(wide[:12]) + (f" and {len(wide) - 12} more"
+                                                                                     if len(wide) > 12 else "")
+                                                          if wide else "") + ". This PC may be a router's DMZ host.")
         self._admin(f"Set-NetConnectionProfile -InterfaceIndex {int(net['index'])} -NetworkCategory {want}")
         now = next((n for n in self._snap().networks if n["index"] == net["index"]), net)
         return {"said": f"{net['interface']} ({net['name']}) is {now['category'].lower()} now", "ok": now["category"] == want,
@@ -1125,10 +1170,30 @@ class WindowsFirewallPlugin(Firewall):
                                                                            "notifications {notify}." + uac, "yes": "Change it"}},
             {"id": "network", "hook": "set_network", "title": "Make a network private or public",
              "fields": [{"name": "index", "label": "Interface", "type": "fixed"}, {"name": "category", "label": "Made", "type": "fixed"},
-                        {"name": "label", "label": "Network", "type": "fixed"}],
+                        {"name": "label", "label": "Network", "type": "fixed"},
+                        {"name": "accept_risk", "type": "accept", "title": "Trust this network?", "yes": "Make it private",
+                         "words": ("Every rule scoped to the Private profile then applies to it, those letting in from "
+                                   "beyond your local subnet among them (named above).")}],
              "confirm": {"title": "Make this network {category}?",
                          "words": "{label} is made {category}: the {category} profile's rules apply to it." + uac, "yes": "Make it so"}},
         ]
+
+
+def private_wider(snap: Snapshot) -> list[str]:
+    """The rules turned on that let in, on the Private profile (or every profile), from beyond the local subnet: what
+    making a network private turns on for it (0.8.0)."""
+    out = []
+    for r in snap.rules:
+        if not (r.enabled and r.direction == "in" and r.action == "allow"):
+            continue
+        profiles = (r.profiles or "Any").lower()
+        if "private" not in profiles and "any" not in profiles and "all" not in profiles:
+            continue
+        remote = (r.remote or "Any").strip().lower()
+        if remote in ("localsubnet", "127.0.0.1", "::1") or remote is None:
+            continue
+        out.append(f"{r.name} ({ports_said(r)}, from {r.remote or 'anywhere'})")
+    return out
 
 
 def _expanded(program: str, windir: str = WINDIR) -> str:

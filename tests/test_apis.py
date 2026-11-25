@@ -12,6 +12,8 @@ import re
 
 import pytest
 
+import netfake
+
 from liminal_libs.machines import windows
 from liminal_libs.sources.apis import dead_links, problems
 from plugin_platform_firewall_windows import MACHINE, READ_SCRIPT, cards_for, netstat_in
@@ -22,10 +24,10 @@ CMDLET = re.compile(r"\b(?:Get|Set|New|Remove|Enable|Disable|Copy|Show|Start|Add
 
 
 def drive():
-    """The read and every change the plugin makes, through the stand-in, as an administrator: a rule turned on and
+    """0.8.0: through netfake.FakeNet, the network read and steps too. The read and every change the plugin makes, through the stand-in, as an administrator: a rule turned on and
     off, one removed, one made, a profile set, a network's category, the setup's profiles on, the exposure check, and
     Liminal's own rule made and removed by name; the scripts it sent."""
-    fake = FakeWindows()
+    fake = netfake.FakeNet()
     fw = plugin(fake)
     fw.status()
     fw.set_rule("RemoteDesktop-UserMode-In-TCP", "on")
@@ -33,12 +35,13 @@ def drive():
     fw.remove_rule("{A1}")
     fw.make_rule("Liminal path check 8795", "in", "allow", "tcp", "8795", "", "LocalSubnet", "Public")
     fw.set_profile("Private", notify="off")
-    fw.set_network(11, "private")
+    fw.set_network(11, "private", accept_risk=True)
     fw.enable()
     fw.exposing((8765, 8775))
     fw.allow("web", (8443,), detail="a test")
     fw.snapshot(fresh=True, wait=5)
     fw.remove("web")
+    netfake.drive_network(fw)  # 0.8.0: the network read, a route, a proxy, and both taken away
     return fw, fake
 
 
@@ -58,8 +61,10 @@ def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
         names += ["Windows' socket tables and their owners (IP Helper)", "Overpass API (OpenStreetMap)",
                   "Wikidata Query Service", "EMODnet Human Activities (WFS)", "Internet Topology Zoo (GitHub)",
                   "OurAirports", "GeoNames"]  # liminal-libs 1.73.0
+    names += ["NetTCPIP (PowerShell)", "netsh (port proxy and excluded ports)"]  # 0.8.0: services' networks
     assert [a.name for a in MACHINE.apis] == names
-    windows, world, netstat = MACHINE.apis[:6], MACHINE.apis[6:10], MACHINE.apis[10:]
+    windows, world, netstat = MACHINE.apis[:6], MACHINE.apis[6:10], MACHINE.apis[10:-2]
+    assert all(a.docs.startswith("https://learn.microsoft.com/") for a in MACHINE.apis[-2:])
     assert all(a.docs.startswith("https://learn.microsoft.com/") and a.verified == "2026-11-11" for a in windows)
     assert [(a.docs, a.verified) for a in world] == [("https://npcap.com/", "2026-11-15"),
                                                      ("https://db-ip.com/db/lite.php", "2026-11-15"),
@@ -127,8 +132,8 @@ def test_on_a_library_before_the_netstat_tab_it_names_what_0_6_1_named():
     and then names none of what the Netstat tab and the globe's layers reach: its cards are 0.6.1's ten."""
     class Before:  # a Firewall base without the Netstat tab (no netstat_view)
         pass
-    assert cards.APIS[10:] == cards.NETSTAT and len(cards.APIS) == 17
-    assert cards_for(Before) == cards.APIS[:10] and not set(cards_for(Before)) & set(cards.NETSTAT)
+    assert cards.APIS[10:17] == cards.NETSTAT and len(cards.APIS) == 19  # 0.8.0: NetTCPIP and netsh after them
+    assert cards_for(Before) == (*cards.APIS[:10], *cards.APIS[17:]) and not set(cards_for(Before)) & set(cards.NETSTAT)
     assert problems(cards_for(Before)) == []
 
 

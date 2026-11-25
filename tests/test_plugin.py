@@ -226,7 +226,7 @@ def test_each_change_runs_as_an_administrator_and_is_read_back():
                        (("x", "in", "allow", "tcp", "", "", "", "Office"), "profiles are any")):
         with pytest.raises(ValueError, match=words):
             fw.make_rule(*bad)
-    assert fw.set_network(11, "private")["said"] == "Wi-Fi (Lakeside 4) is private now"
+    assert fw.set_network(11, "private", accept_risk=True)["said"] == "Wi-Fi (Lakeside 4) is private now"
     assert "Set-NetConnectionProfile -InterfaceIndex 11 -NetworkCategory Private" in "\n".join(fake.scripts)
     assert fw.status()["networkInUse"] == "Wi-Fi: Lakeside 4 (private)"
     with pytest.raises(ValueError, match="no rule with the id"):

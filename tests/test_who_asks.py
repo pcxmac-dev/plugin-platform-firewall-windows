@@ -22,7 +22,12 @@ from liminal_libs.machines.windows import PowerShell, wrapped  # noqa: E402
 from plugin_platform_firewall_windows import MACHINE  # noqa: E402
 from test_plugin import FakeWindows, plugin  # noqa: E402
 
-CHANGES = ("set_rule", "remove_rule", "make_rule", "set_profile", "set_network", "allow", "remove")
+CHANGES = ("set_rule", "remove_rule", "make_rule", "set_profile", "set_network", "allow", "remove",
+           # 0.8.0: the base's other changes, and NetworkHost's (liminal-libs 1.96.0)
+           "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget",
+           "world_watching", "world_geoip", "world_asn", "world_layer_get", "world_layer_remove",
+           "approve_plan", "grant_network", "revoke_network", "set_domain", "withdraw", "repoint",
+           "remove_leftover", "forget_records")
 READS = ("present", "status", "refresh", "find_rules", "show_rules", "wanted", "world", "netstat")
 OFF = ("Public", "off", None, None, None, True)  # the review's body: the Public profile's firewall off, "accepted"
 OPEN = ("x", "in", "allow", "any")  # and its second: a rule letting everything in, on every profile
@@ -80,7 +85,7 @@ def attached(request, monkeypatch):
 
 def test_its_changes_are_said_to_be_asked_only_from_its_page_and_its_reads_by_anyone():
     assert set(internal.page_only(MACHINE)) == set(CHANGES)  # what the platform reads
-    assert internal.plugin_only(MACHINE) == ()
+    assert set(internal.plugin_only(MACHINE)) == {"network_plan", "apply_network", "network_work"}  # 0.8.0
     assert internal.problems(MACHINE) == []  # each a hook of its own, and someone may ask it
     for hook in CHANGES:
         assert asking.refusal(MACHINE, hook, asking.PAGE) == ""

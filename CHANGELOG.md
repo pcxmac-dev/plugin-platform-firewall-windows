@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.8.0 (2026-11-25)
+
+Services' networks through this firewall, on liminal-libs 1.96.0's NetworkHost (service-containers-networking-2026-11-23.md
+§5.1, §6, §7 and §14; decision 2 as (b) with (b1), the user's choice). The user, 2026-11-23: "all services/containers will
+use the firewall app to create routing for the IP ranges of the containers"; "the firewall app will know it's domain,
+and have name resolution to each container, reverse lookup for all containers, and contain DHCP records"; "all this is
+mediated between the firewall API and the containers (plugin to plugin)". Floor: liminal-libs 1.96.0. On 0.7.3 (the
+review's PLT-H1 gates, not landed).
+- **Routes into WSL:** a container plugin you let ask (the Networks tab's Let it…) gets each service's /24 from the
+  Windows half of Liminal's pool (10.77.0.0/17), checked against this PC's addresses and routes (Get-NetIPAddress,
+  Get-NetRoute, read with no rights), and one route per segment: `New-NetRoute -DestinationPrefix <it> -InterfaceIndex
+  <the WSL adapter's> -NextHop <the VM's address> -PolicyStore ActiveStore`, a stale one of that prefix taken away
+  first. The VM's address is the WSL plugin's `wsl_network` (read only while a Liminal distribution runs: a stopped one
+  refuses the plan, naming its page, and nothing starts); the adapter is found by that address, never by its name; a
+  hop on none of this PC's WSL adapters, or a mode other than NAT, is refused in words. A restart of Windows takes the
+  route away: the next Start's plan points it again, in that Start's own approval, or Re-point… on the Networks tab.
+- **Your network (decision 2 b, b1):** Expose… adds a port proxy per port (`netsh interface portproxy add v4tov4`)
+  listening on this PC's address on your network alone (the default route's adapter that is no vEthernet: never
+  0.0.0.0, loopback or a virtual switch), connecting to the part's reserved address and the container's own port
+  through the route, with the rule `Liminal: svc-<owner>-<name>-<port>` (TCP in, from LocalSubnet, Private and Domain
+  alone, for the IP Helper service). UDP is refused (the proxy carries TCP alone). A Windows containers segment is this
+  PC's own: no route, and Expose… is its rule alone. Conceal…, Remove… and Withdraw… take exactly that away.
+- **Names and DHCP records:** forward and reverse in the domain you set (`set_domain`, kept through the login: no
+  default, so no service is placed until you set one); every container the granted plugins' segments hold recorded in
+  the network database (network/network.db), found ones answered in reverse with their engine's own name.
+- **One script, one prompt:** every plan's steps run as one PowerShell script from fixed templates (every prefix,
+  address, port and rule name parsed first; a route's prefix must be in the pool, a hop and a listen address private),
+  through `_admin`: UAC once on this PC's screen, or at once as an administrator. Never written: New-NetNat,
+  Remove-NetNat, Set-NetIPInterface -Forwarding, IPEnableRouter, portproxy reset (refused if a script holds one).
+- **The Networks tab** (the library's): segments by stack with each route current or stale, plans waiting for you,
+  the container plugins you let, the domain, names, DHCP records, gone segments and leftovers (routes in the pool,
+  proxies to it, svc- rules no service accounts for; your own proxies elsewhere are never listed), each with its
+  Remove…; Re-point….
+- **`excluded_ports`** (a read any plugin asks): Windows' excluded TCP port ranges (netsh interface ipv4 show
+  excludedportrange), which the container plugins never publish in.
+- **Asked twice:** making a network Private (`set_network`'s `accept_risk`), naming each rule turned on that Private
+  would then let in from beyond your local subnet (N23).
+- **Page-only:** the base's other changes too (labels and moves, the hosts' recording and forgetting, the traffic's
+  watching, the downloads), beside NetworkHost's own (approve_plan, the grants, the domain, Re-point…, Withdraw…,
+  leftovers, Forget…). network_plan, apply_network and network_work are a granted container plugin's alone.
+- API cards: NetTCPIP (PowerShell) and netsh (port proxy and excluded ports).
+- Tests: tests/test_networks.py (14) over tests/netfake.py, the library's conformance sequence among them with this
+  plugin routing and naming; each of its 12 gates taken out once made a test fail.
+
 ## 0.7.3 (2026-11-24)
 
 The changes are asked only from the page, and run() never asks for an administrator (the independent review's finding

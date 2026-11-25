@@ -1242,8 +1242,90 @@ GEONAMES_API = Api(
 )
 
 # the Netstat tab's and the globe's layers' (0.7.0; the Topology Zoo's, 0.7.1)
+# 0.8.0: services' networks (network.py): the routes into WSL, the addresses and routes read, the port proxies
+NETSH = "https://learn.microsoft.com/en-us/windows-server/networking/technologies/netsh/"
+NETTCPIP = Api(
+    name="NetTCPIP (PowerShell)",
+    maker="Microsoft",
+    about=("This PC's IP addresses and routes. The plugin reads them with no rights (what a service's segment must not "
+           "meet, the WSL adapter a route goes through, your network's address), and makes one route per service "
+           "segment into WSL through the VM's address, always in the active store, so a restart of Windows takes it "
+           "away; the next Start's plan, or Re-point…, makes it again."),
+    kind="powershell",
+    base="the NetTCPIP module (Windows PowerShell 5.1)",
+    version="the NetTCPIP module of Windows 11 and Windows Server 2025",
+    auth="reading: no rights needed; a route made or taken away: an administrator (UAC), inside a plan you approved",
+    limits="routes in the active store alone: never the persistent store; never Set-NetIPInterface -Forwarding",
+    costs="",
+    links=(
+        Link("Get-NetIPAddress", MODULE + "nettcpip/get-netipaddress" + WS, "reference"),
+        Link("Get-NetRoute", MODULE + "nettcpip/get-netroute" + WS, "reference"),
+        Link("New-NetRoute", MODULE + "nettcpip/new-netroute" + WS, "reference"),
+        Link("Remove-NetRoute", MODULE + "nettcpip/remove-netroute" + WS, "reference"),
+    ),
+    areas=(
+        Area("Addresses", "each interface's IPv4 addresses and prefix lengths", MODULE + "nettcpip/get-netipaddress" + WS,
+             covered="what a segment must not meet; the WSL adapter, found by the VM's address; your network's address"),
+        Area("Routes", "the route table, its stores", MODULE + "nettcpip/get-netroute" + WS,
+             covered="read, and one route per service segment into WSL made and taken away"),
+        Area("Forwarding", "an interface's forwarding (Set-NetIPInterface -Forwarding): never set here",
+             MODULE + "nettcpip/set-netipinterface" + WS),
+    ),
+    calls=(
+        Call("Get-NetIPAddress -AddressFamily IPv4", "this PC's IPv4 addresses", "Addresses", used="the network read",
+             docs=MODULE + "nettcpip/get-netipaddress" + WS),
+        Call("Get-NetRoute -AddressFamily IPv4", "the route table", "Routes", used="the network read, and before a route",
+             docs=MODULE + "nettcpip/get-netroute" + WS),
+        Call("New-NetRoute -DestinationPrefix <segment> -InterfaceIndex <n> -NextHop <the VM> -PolicyStore ActiveStore",
+             "a route to a service's segment through WSL's VM", "Routes", used="an approved plan's work, Re-point…",
+             docs=MODULE + "nettcpip/new-netroute" + WS, writes=True),
+        Call("Remove-NetRoute -Confirm:$false", "a segment's route taken away (the active store's)", "Routes",
+             used="Remove…, Withdraw…, a leftover's Remove…", docs=MODULE + "nettcpip/remove-netroute" + WS, writes=True),
+    ),
+    verified=VERIFIED,
+)
+
+NETSH_API = Api(
+    name="netsh (port proxy and excluded ports)",
+    maker="Microsoft",
+    about=("netsh's interface portproxy: one TCP proxy per port a service opens to your network, listening on this PC's "
+           "address there alone (never 0.0.0.0) and connecting to the part's reserved address through the route "
+           "(decision 2 b, b1), carried by the IP Helper service; and the TCP port ranges Windows keeps for itself, "
+           "which no service publishes in."),
+    kind="cli",
+    base="netsh.exe",
+    version="Windows 11",
+    auth="reading: no rights needed; a proxy added or deleted: an administrator (UAC), inside a plan you approved",
+    limits="TCP alone; never portproxy reset (it removes every proxy, yours too)",
+    costs="",
+    links=(
+        Link("netsh interface portproxy", NETSH + "netsh-interface-portproxy", "reference"),
+        Link("netsh interface", NETSH + "netsh-interface", "reference"),
+    ),
+    areas=(
+        Area("Port proxies", "v4tov4 proxies: listen address and port, connect address and port",
+             NETSH + "netsh-interface-portproxy", covered="read; one per opened port added and deleted"),
+        Area("Excluded port ranges", "the ports Windows and Hyper-V keep for themselves", NETSH + "netsh-interface",
+             covered="read for the container plugins (excluded_ports)"),
+        Area("Other proxies", "v4tov6, v6tov4 and v6tov6: never made here", NETSH + "netsh-interface-portproxy"),
+    ),
+    calls=(
+        Call("netsh interface portproxy show v4tov4", "the port proxies", "Port proxies", used="the network read",
+             docs=NETSH + "netsh-interface-portproxy"),
+        Call("netsh interface portproxy add v4tov4 listenaddress=<your network's> listenport=<p> connectaddress=<part> "
+             "connectport=<p>", "a port opened to your network", "Port proxies", used="Expose…",
+             docs=NETSH + "netsh-interface-portproxy", writes=True),
+        Call("netsh interface portproxy delete v4tov4 listenaddress=<a> listenport=<p>", "that port closed",
+             "Port proxies", used="Conceal…, Remove…, Withdraw…", docs=NETSH + "netsh-interface-portproxy",
+             writes=True),
+        Call("netsh interface ipv4 show excludedportrange protocol=tcp", "the excluded port ranges",
+             "Excluded port ranges", used="excluded_ports", docs=NETSH + "netsh-interface"),
+    ),
+    verified=VERIFIED,
+)
+
 NETSTAT = (SOCKETS, OVERPASS_API, WIKIDATA, EMODNET, TOPOLOGY_ZOO,
            OURAIRPORTS_API, GEONAMES_API)  # liminal-libs 1.73.0: what routers' names are read with
 
 APIS = (POWERSHELL, NETSECURITY, NETCONNECTION, DEFENDER_API, WINDOWS_FIREWALL, NAMES, NPCAP, DBIP, OPENDNS, GOOGLE,
-        *NETSTAT)
+        *NETSTAT, NETTCPIP, NETSH_API)

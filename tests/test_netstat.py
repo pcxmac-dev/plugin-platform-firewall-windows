@@ -292,7 +292,7 @@ def table(monkeypatch) -> Table:
 
 # -- what the plugin is given and names ------------------------------------------------------------------------------
 def test_the_netstat_tab_is_the_firewall_bases_after_the_world_wide_web_tab_with_the_plugins_data_sets():
-    assert netstat_in() and MACHINE.TABS == Firewall.TABS == (Tab("world", "World Wide Web", "world", 2.0),
+    assert netstat_in() and MACHINE.TABS[:2] == Firewall.TABS == (Tab("world", "World Wide Web", "world", 2.0),
                                                               Tab("netstat", "Netstat", "netstat", 3.0))
     hooks = MACHINE.interface()["hooks"]
     assert hooks["netstat"].startswith("() ") and hooks["hosts_recording"].startswith("(mode) ")
