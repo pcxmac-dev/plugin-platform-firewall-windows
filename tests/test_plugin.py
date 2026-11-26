@@ -378,7 +378,8 @@ def test_off_windows_it_is_not_for_the_machine_and_reads_runs_and_offers_nothing
     st = fw.status()
     assert (st["applies"], st["valid"], st["summary"], st["why"]) == (False, False, "not for this machine", why)
     assert fw.setup(log=lambda line: None) == [{"step": "enable", "ok": False, "detail": why}]
-    assert fw.ask("world") == not_here_page(why)
+    if "world" in fw.HOOKS:  # 0.10.0: the World Wide Web tab is plugin-platform-worldwideweb's with liminal-libs 1.105.0
+        assert fw.ask("world") == not_here_page(why)
     assert fw.snapshot(fresh=True, wait=0.5) is None
     for change in (fw.refresh, lambda: fw.set_rule("RemoteDesktop-UserMode-In-TCP", "on"),
                    lambda: fw.make_rule("Liminal path check 8795", ports="8795")):

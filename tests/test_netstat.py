@@ -73,7 +73,7 @@ from liminal_libs.machines.windows import PowerShell  # noqa: E402
 from liminal_libs.machines.world import LicenceRefused, size_words  # noqa: E402
 from liminal_libs.sources.apis import problems  # noqa: E402
 from liminal_libs.sources.conformance import problems as contract_problems  # noqa: E402
-from plugin_platform_firewall_windows import MACHINE, WindowsFirewallPlugin, netstat_in  # noqa: E402
+from plugin_platform_firewall_windows import MACHINE, WindowsFirewallPlugin, netstat_in, world_in  # noqa: E402
 from plugin_platform_firewall_windows import apis as cards  # noqa: E402
 from test_plugin import FakeWindows, plugin  # noqa: E402
 from test_world import NOW, Clock, Feed, Watched, wait_for  # noqa: E402
@@ -83,6 +83,10 @@ WEB, WEB2 = "81.2.69.142", "81.2.69.160"  # public addresses: the internet's
 EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
 PY = "C:\\Python315\\python.exe"
 NAMES = {WEB2: "cdn.example"}  # the system's own hosts file, stood in
+# 0.10.0: these are the 0.9.0 tab's, run with a library whose Firewall base still has it (before liminal-libs 1.105.0):
+# from 1.105.0 the tab is plugin-platform-worldwideweb's, whose own tests hold these assertions
+old_library = pytest.mark.skipif(not world_in(), reason="the World Wide Web tab is plugin-platform-worldwideweb's "
+                                                        "from liminal-libs 1.105.0")
 THREADS = ("-hosts", "-layer-download", "traffic-watcher", "-public-address", "firewall-windows-read")
 # the data sets' digest (sha256 of apis.INFRASTRUCTURE as canonical JSON: sorted keys, no spaces, UTF-8), the same the
 # Linux firewall plugin's tests pin: the two plugins name the same data sets, and a data set changed changes both
@@ -292,6 +296,23 @@ def table(monkeypatch) -> Table:
 
 
 # -- what the plugin is given and names ------------------------------------------------------------------------------
+def test_the_netstat_tab_is_the_firewall_bases_and_the_world_wide_web_tab_is_not_its_own():
+    """0.10.0, liminal-libs 1.105.0: the Netstat tab, then the Networks tab; the World Wide Web tab, its hooks, its keys
+    and its cards are plugin-platform-worldwideweb's. Its services to that plugin are the base's (test_services.py)."""
+    if world_in():
+        pytest.skip("a library before 1.105.0: the 0.9.0 tabs (the test below)")
+    assert [t.id for t in MACHINE.TABS] == ["netstat", "container_networks"]
+    hooks = MACHINE.interface()["hooks"]
+    assert hooks["netstat"].startswith("() ") and hooks["hosts_recording"].startswith("(mode) ")
+    assert not {h for h in hooks if h.startswith("world")}
+    assert {"netstat_seen", "hosts_found", "hosts_routes", "rules_covering"} <= set(hooks)
+    assert [k.name for k in MACHINE.keys] == ["LIMINAL_HOSTS_RECORDING"]
+    assert not set(cards.NETSTAT[1:]) & set(MACHINE.apis) and cards.SOCKETS in MACHINE.apis
+    assert "Netstat" in MACHINE.about and "globe" not in MACHINE.about
+    assert contract_problems(MACHINE) == [] and problems(MACHINE.apis) == []
+
+
+@old_library
 def test_the_netstat_tab_is_the_firewall_bases_after_the_world_wide_web_tab_with_the_plugins_data_sets():
     assert netstat_in() and MACHINE.TABS[:2] == Firewall.TABS == (Tab("world", "World Wide Web", "world", 2.0),
                                                               Tab("netstat", "Netstat", "netstat", 3.0))
@@ -472,7 +493,8 @@ def test_one_reading_is_shared_by_both_tabs_and_kept_in_the_hosts_database(table
     fw = Watched(capture_factory=Feed, geo_folder=tmp_path / "geoip", clock=Clock(), wall=Clock(NOW))
     try:
         fw.ask("netstat")
-        fw.ask("world")  # within the reading's 2.5 s: the same reading
+        # within the reading's 2.5 s: the same reading (0.10.0: the World Wide Web plugin's ask of it, netstat_seen)
+        fw.ask("world") if world_in() else fw.netstat_seen()
         assert table.reads == 1
         facts = hostbook.book().describe()
         assert facts["path"] == str(hostbook.path()) and facts["rows"] >= 2 and facts["hosts"] >= 2
@@ -481,6 +503,7 @@ def test_one_reading_is_shared_by_both_tabs_and_kept_in_the_hosts_database(table
         fw.detach()
 
 
+@old_library
 def test_the_globe_shows_the_hosts_recorded_filtered_by_program_port_direction_and_time(table, tmp_path):
     fw = Watched(capture_factory=Feed, geo_folder=tmp_path / "geoip", clock=Clock(), wall=Clock(NOW))
     try:
@@ -514,6 +537,7 @@ def test_the_globe_shows_the_hosts_recorded_filtered_by_program_port_direction_a
         fw.detach()
 
 
+@old_library
 def test_a_data_set_is_downloaded_on_your_word_from_the_plugins_address_and_drawn_on_the_globe(table, tmp_path,
                                                                                                  monkeypatch):
     sites = DataSet.of(ours("osm-datacentres"))
@@ -557,6 +581,7 @@ def test_a_data_set_is_downloaded_on_your_word_from_the_plugins_address_and_draw
         fw.detach()
 
 
+@old_library
 def test_the_backbones_are_downloaded_on_your_word_from_the_topology_zoos_file_and_drawn_on_the_globe(table, tmp_path,
                                                                                                         monkeypatch):
     """The user, 2026-11-19: "major network 'bones' need to be displayed on the map". The Topology Zoo's archive, asked
@@ -647,6 +672,9 @@ def test_its_facts_say_the_last_reading_the_recording_the_hosts_database_and_eac
         assert sockets_facts["Recording"] == "only while this plugin's Netstat or World Wide Web tab is shown"
         assert re.match(r"\d+ rows \(\d+ hosts?, \d+ programs?\), ", sockets_facts["Hosts database"])
         assert str(hostbook.path()) in sockets_facts["Hosts database"]
+        if not world_in():  # 0.10.0: the data sets are plugin-platform-worldwideweb's, and so are their facts
+            assert not {a.name for a in cards.NETSTAT[1:]} & set(facts)
+            return
         assert facts[cards.OVERPASS_API.name] == {d["title"]: (
             "not downloaded: the World Wide Web tab's Internet infrastructure table offers it, its size and licence "
             "said first") for d in cards.INFRASTRUCTURE if d["format"] == "overpass"}
@@ -740,8 +768,10 @@ def test_off_windows_no_view_is_made_and_every_hook_of_its_tabs_reads_records_ke
     try:
         assert fw.netstat_view(make=False) is None  # no view made, no recording started beside the Linux firewall's
         assert fw.ask("netstat") == {"title": "Netstat", "note": f"Not for this machine: {why}. Nothing is read here."}
-        assert set(ASKS) == set(netstat.HOOKS) - {"netstat"}  # every one of the base's (a new one needs an ask here)
-        for hook, args in ASKS.items():
+        asks = {h: a for h, a in ASKS.items() if h in fw.HOOKS}  # 0.10.0: the globe's left with the tab (1.105.0)
+        mine = set(getattr(netstat, "FIREWALL_HOOKS", netstat.HOOKS))
+        assert set(asks) == mine - {"netstat"}  # every one of the base's (a new one needs an ask here)
+        for hook, args in asks.items():
             with pytest.raises(ValueError, match="not for this machine") as refused:  # a refusal (400), in words
                 fw.ask(hook, *args)
             assert why in str(refused.value), hook

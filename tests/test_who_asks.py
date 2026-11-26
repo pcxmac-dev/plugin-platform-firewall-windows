@@ -33,6 +33,9 @@ CHANGES = ("set_rule", "remove_rule", "make_rule", "set_profile", "set_network",
            # 0.10.0 (the review): the sgp4 package's download and removal, the page's alone; its places a read
            "world_sky_get", "world_sky_remove")
 READS = ("present", "status", "refresh", "find_rules", "show_rules", "wanted", "world", "netstat", "world_sky")
+# with liminal-libs 1.105.0 the World Wide Web tab's hooks are plugin-platform-worldwideweb's, not this plugin's
+CHANGES = tuple(h for h in CHANGES if h in MACHINE.HOOKS)
+READS = tuple(h for h in READS if h in MACHINE.HOOKS)
 OFF = ("Public", "off", None, None, None, True)  # the review's body: the Public profile's firewall off, "accepted"
 OPEN = ("x", "in", "allow", "any")  # and its second: a rule letting everything in, on every profile
 OFF_SCRIPT = "Set-NetFirewallProfile -Name Public -Enabled False"
@@ -89,7 +92,9 @@ def attached(request, monkeypatch):
 
 def test_its_changes_are_said_to_be_asked_only_from_its_page_and_its_reads_by_anyone():
     assert set(internal.page_only(MACHINE)) == set(CHANGES)  # what the platform reads
-    assert set(internal.plugin_only(MACHINE)) == {"network_plan", "apply_network", "network_work"}  # 0.8.0
+    # 0.8.0; 0.10.0, liminal-libs 1.105.0: the base's three changes only the World Wide Web plugin asks
+    kept = {"hosts_keep_route", "hosts_keep_places", "hosts_clear_places"} & set(MACHINE.HOOKS)
+    assert set(internal.plugin_only(MACHINE)) == {"network_plan", "apply_network", "network_work", *kept}
     assert internal.problems(MACHINE) == []  # each a hook of its own, and someone may ask it
     for hook in CHANGES:
         assert asking.refusal(MACHINE, hook, asking.PAGE) == ""

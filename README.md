@@ -6,6 +6,12 @@ globe, with the ports' traffic. Since 0.7.0 its Netstat tab lists the listening 
 program behind each, the hosts each program talks with are recorded on this PC, and the globe shows them, filtered,
 over the internet's infrastructure.
 
+**0.10.0:** with liminal-libs 1.105.0 the World Wide Web tab is a plugin of its own, plugin-platform-worldwideweb
+(Monday list item 33), which asks this plugin through the platform for what only a firewall knows: the socket table's
+reading, the hosts recorded, the routes kept, the rules covering a port. This plugin keeps its rules, its Netstat tab
+and the hosts' recording; the tab's place column comes from that plugin's GeoIP file (`places`). On a library before
+1.105.0 the tab below is this plugin's as in 0.9.0, for one release more.
+
 The user's words: "the platform is the interface for the software/hardware which facilitates the liminal framework";
 "i also need a windows and linux firewall plugin for the platform" (2026-11-07); "windows firewall, i need it to be
 able to read the configuration, and make changes"; "basically the firewall plugin is an interface for windows
@@ -98,6 +104,9 @@ framework's pages, 8765, 8775, 8785, 8795; a finding, never a change) and `rules
 need, opened as `Liminal: <name>`). `allow`/`remove` make and remove Liminal's own rules.
 
 ## The World Wide Web tab
+
+(With liminal-libs 1.105.0, plugin-platform-worldwideweb's: what follows is the tab as this plugin has it on an older
+library, and as that plugin has it now.)
 
 Since 0.6.0 the plugin's page has a tab after Main and its API tabs, **World Wide Web**: the library's Firewall base's
 tab (liminal-libs 1.55.0, `machines/world.py`), which liminal-platform 0.27.0 asks every 2 s while it is shown. The

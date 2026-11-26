@@ -58,7 +58,7 @@ from liminal_libs.machines.windows import PowerShell
 from liminal_libs.machines.world import READ_S, LicenceRefused, WorldView
 from liminal_libs.sources.apis import problems
 from liminal_libs.traffic import TrafficBook
-from plugin_platform_firewall_windows import MACHINE, WindowsFirewallPlugin, netstat_in
+from plugin_platform_firewall_windows import MACHINE, WindowsFirewallPlugin, netstat_in, world_in
 from plugin_platform_firewall_windows import apis as cards
 from test_plugin import FakeWindows
 
@@ -79,6 +79,10 @@ try:
 except ImportError:  # an older library: its tab reads none
     sockets = None
 NETSTAT = netstat_in()  # the library's Firewall base has the Netstat tab and the globe's layers (liminal-libs 1.65.0)
+# 0.10.0: the whole of this file is the 0.9.0 tab's, run with a library whose Firewall base still has it (before
+# liminal-libs 1.105.0); from 1.105.0 the tab is plugin-platform-worldwideweb's, whose own tests hold these assertions
+pytestmark = pytest.mark.skipif(not world_in(), reason="the World Wide Web tab is plugin-platform-worldwideweb's from "
+                                                       "liminal-libs 1.105.0")
 
 # CI installs maxminddb (liminal-libs[geo]): there the placing tests run, and fail rather than skip without it
 needs_reader = pytest.mark.skipif(not geo.available()[0] and not os.environ.get("CI"), reason="maxminddb is not installed here")

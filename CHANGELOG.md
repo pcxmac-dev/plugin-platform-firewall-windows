@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.11.0 (provisional)
+
+The World Wide Web tab leaves this plugin for plugin-platform-worldwideweb 0.1.0 (Monday list item 33), on liminal-libs
+1.105.0, whose Firewall base no longer has it. This plugin keeps its rules, its Netstat tab, the hosts' recording and the
+Networks tab. Floor unchanged: on a library before 1.105.0 the tab is as in 0.9.0, for one release more.
+
+- **With liminal-libs 1.105.0** (`world_in`): its tabs are Netstat and Networks; no hook, key, form or card of the World
+  Wide Web tab is its own (`cards_for` leaves out Npcap, DB-IP, OpenDNS, Google and the data sets' sources, which
+  plugin-platform-worldwideweb's apis.py holds, moved word for word); its page-only changes are those its hooks have.
+- **The base's services** the World Wide Web plugin asks through the platform: the socket table's reading, the hosts
+  recorded, the routes kept, a route traced and the places looked up kept (only another plugin may ask the changes).
+- **`rules_covering`, in Windows' own terms:** the rules of the last read covering a port (named, in a range, every
+  port), of its protocol or of any, with each rule's id, program, service and group; from the read kept.
+- **The Netstat tab's place column** comes from the World Wide Web plugin's `places`; with that plugin not attached
+  the note says why.
+- `apis.py` keeps the tab's cards and data for an older library; they are deleted in the release after.
+- Tests: the 0.9.0 tab's tests run with an older library and are skipped with 1.105.0 (plugin-platform-worldwideweb
+  holds them); test_services.py covers the services and `rules_covering`, skipped with an older library.
+
 ## 0.10.0 (2026-11-26)
 
 The globe's newer data sets (the Monday list's items 24, 27, 28, 29 and 32; the user, 2026-11-26: "Build first, ask per

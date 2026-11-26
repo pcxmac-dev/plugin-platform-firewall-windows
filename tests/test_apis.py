@@ -16,7 +16,7 @@ import netfake
 
 from liminal_libs.machines import windows
 from liminal_libs.sources.apis import dead_links, problems
-from plugin_platform_firewall_windows import MACHINE, READ_SCRIPT, cards_for, netstat_in
+from plugin_platform_firewall_windows import MACHINE, READ_SCRIPT, cards_for, netstat_in, world_in
 from plugin_platform_firewall_windows import apis as cards
 from test_plugin import FakeWindows, plugin
 
@@ -53,10 +53,15 @@ def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
     assert problems(MACHINE.apis) == [] and MACHINE.apis == cards_for()
     names = ["Windows PowerShell 5.1", "NetSecurity (PowerShell)", "NetConnection (PowerShell)",
              "Microsoft Defender Antivirus (Defender module)", "Windows Firewall (its policy over COM)",
-             "Windows' names for a rule's service, app and program",
-             # 0.6.0: what the World Wide Web tab reaches (test_world.py)
-             "Npcap (packet capture)", "DB-IP IP to City Lite", "OpenDNS (myip.opendns.com)",
-             "Google's name servers (o-o.myaddr.l.google.com)"]
+             "Windows' names for a rule's service, app and program"]
+    if not world_in():  # 0.10.0, liminal-libs 1.105.0: the World Wide Web tab's cards are plugin-platform-worldwideweb's
+        names += ["Windows' socket tables and their owners (IP Helper)",
+                  "NetTCPIP (PowerShell)", "netsh (port proxy and excluded ports)"]
+        assert [a.name for a in MACHINE.apis] == names and problems(MACHINE.apis) == []
+        return
+    # 0.6.0: what the World Wide Web tab reaches (test_world.py)
+    names += ["Npcap (packet capture)", "DB-IP IP to City Lite", "OpenDNS (myip.opendns.com)",
+              "Google's name servers (o-o.myaddr.l.google.com)"]
     if netstat_in():  # 0.7.0, with liminal-libs 1.65.0: the Netstat tab's and the globe's layers' (test_netstat.py)
         names += ["Windows' socket tables and their owners (IP Helper)", "Overpass API (OpenStreetMap)",
                   "Wikidata Query Service", "EMODnet Human Activities (WFS)", "Internet Topology Zoo (GitHub)",
