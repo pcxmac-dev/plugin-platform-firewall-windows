@@ -795,7 +795,8 @@ def test_the_newer_data_sets_are_read_by_the_library_each_with_its_licence_and_c
     assert (fibre.format, fibre.layer, fibre.member, len(fibre.tiles)) == ("mvt", "fibre", "fiber", 56)
     assert {z for z, _, _ in fibre.tiles} == {5} and fibre.host == "d316kar6yg8hyq.cloudfront.net"
     assert "never kept" in fibre.about and "contributors' names and e-mail addresses are never kept" in fibre.licence
-    for ident, layer, member in (("ne-roads", "roads", "ne_10m_roads"), ("ne-railways", "railways", "ne_10m_railroads")):
+    for ident, layer, member in (("ne-roads", "roads", "ne_10m_roads"),
+                                 ("ne-railways", "railways", "ne_10m_railroads")):
         d = sets[ident]
         assert (d.format, d.layer, d.member, d.stand_in, d.step) == ("shapefile", layer, member, True, 0.05)
         assert d.hosts == ("naciscdn.org",) and d.url.endswith(f"/download/10m/cultural/{member}.zip")

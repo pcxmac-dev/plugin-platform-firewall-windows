@@ -98,6 +98,13 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   person's signed in at the platform's page; each acceptance of a licence is kept in that person's own login store,
   never in a file. IPinfo Lite, for networks, is named and not offered (the user, 2026-11-25: each source offered only
   after their yes): its row waits for your word, with no button, no card and no key asked (apis.GEOIP_SOURCES).
+- The globe's newer data sets (0.10.0, liminal-libs 1.104.0; the Monday list's items 24, 27, 28, 29 and 32):
+  AfTerFibre's fibre on land in Africa (its map's tiles; CC BY 4.0), Natural Earth's 1:10m roads and railways as
+  stand-ins for fibre where none is mapped (public domain), TopoHub's backbone model, RIPE Atlas's probes and its
+  anchors' newest traceroutes (non-commercial), and CelesTrak's orbits of Starlink, OneWeb and HughesNet, placed with
+  the sgp4 package pinned here (SGP4_PACKAGE), each footprint at 25 degrees of elevation. Each is downloaded only on
+  your click, its size and licence said first, and kept in the plugin's own infrastructure.db (GLOBE2_SETS, their cards
+  GLOBE2).
 
     python -m plugin_platform_firewall_windows status | rules [PRESET] | find WORDS [--port N] [--in|--out]
         [--allow|--block] | profiles | networks | set-rule ID on|off | remove-rule ID | add-rule NAME ... |
@@ -134,7 +141,7 @@ from .apis import RDAP_BOOTSTRAP as RDAP_FILES
 from .network import EXCLUDED, WindowsNetwork
 from liminal_libs.machines.segments import NetworkHost
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}

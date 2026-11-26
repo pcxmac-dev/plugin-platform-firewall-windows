@@ -29,7 +29,12 @@ plugins' tests pin their digest.
 
 The GeoIP sources (0.9.0, liminal-libs 1.101.0) are named here too (GEOIP_SOURCES): DB-IP's two files, at the addresses
 above, and IPinfo Lite for networks, named and not offered, so it has no card yet. The Linux firewall plugin names the
-same sources in the same words, and both plugins' tests pin their digest."""
+same sources in the same words, and both plugins' tests pin their digest.
+
+The globe's newer sources (0.10.0, liminal-libs 1.104.0), their pages read on 2026-11-26 (`VERIFIED_GLOBE2`): Natural
+Earth, AfTerFibre, TopoHub, RIPE Atlas, CelesTrak and the sgp4 package on PyPI, each a card (GLOBE2) and their data sets
+GLOBE2_SETS, at the end of INFRASTRUCTURE; the same in both firewall plugins but the sgp4 wheel each pins
+(SGP4_PACKAGE)."""
 from __future__ import annotations
 
 from liminal_libs.machines import geosources
