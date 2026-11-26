@@ -29,8 +29,10 @@ CHANGES = ("set_rule", "remove_rule", "make_rule", "set_profile", "set_network",
            "approve_plan", "grant_network", "revoke_network", "set_domain", "withdraw", "repoint",
            "remove_leftover", "forget_records",
            # 0.9.0: the base's GeoIP sources, their file's download, use and removal (liminal-libs 1.101.0)
-           "world_geoip_get", "world_geoip_use", "world_geoip_remove")
-READS = ("present", "status", "refresh", "find_rules", "show_rules", "wanted", "world", "netstat")
+           "world_geoip_get", "world_geoip_use", "world_geoip_remove",
+           # 0.10.0 (the review): the sgp4 package's download and removal, the page's alone; its places a read
+           "world_sky_get", "world_sky_remove")
+READS = ("present", "status", "refresh", "find_rules", "show_rules", "wanted", "world", "netstat", "world_sky")
 OFF = ("Public", "off", None, None, None, True)  # the review's body: the Public profile's firewall off, "accepted"
 OPEN = ("x", "in", "allow", "any")  # and its second: a rule letting everything in, on every profile
 OFF_SCRIPT = "Set-NetFirewallProfile -Name Public -Enabled False"

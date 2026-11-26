@@ -464,7 +464,9 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
                        # the hosts' recording and forgetting, the traffic's watching, the downloads; NetworkHost's own
                        # (approve_plan, the grants, the domain, Re-point…, Withdraw…) add up from its class
                        "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget",
-                       "world_watching", "world_geoip", "world_asn", "world_layer_get", "world_layer_remove")
+                       "world_watching", "world_geoip", "world_asn", "world_layer_get", "world_layer_remove",
+                       # 0.10.0: the sgp4 package's download and removal, code the plugin then imports
+                       "world_sky_get", "world_sky_remove")
     # -- the World Wide Web tab (0.6.0): its tab (TABS), its hooks and its setting (keys: LIMINAL_HOME_PLACE, home on the
     # globe) are the Firewall base's; what it reaches is named here (apis.py), since the library names no outside host
     GEOIP_URL = CITY_LITE  # DB-IP's IP to City Lite, this month's file (last month's while this month's is not out yet)
