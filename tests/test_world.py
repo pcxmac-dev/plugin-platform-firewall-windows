@@ -315,7 +315,12 @@ def socket_table(*rows) -> dict:
 def layer_forms() -> list[str]:
     """The ids of the forms that download the plugin's data sets (the infrastructure table's Download…, 0.7.0); none
     on a library before 1.65.0."""
-    return [f"world-layer-{d['id']}" for d in cards.INFRASTRUCTURE] if NETSTAT else []
+    if not NETSTAT:
+        return []
+    # 0.10.0 (liminal-libs 1.104.0): the sgp4 package's Download… first, and a set read with another (RIPE Atlas's
+    # traceroutes with its probes) offered once that one is in
+    sky = ["world-sky-package"] if "world_sky_get" in Firewall.JOB_HOOKS else []
+    return sky + [f"world-layer-{d['id']}" for d in cards.INFRASTRUCTURE if not d.get("needs")]
 
 
 def titles(page: dict) -> dict:
@@ -392,7 +397,8 @@ def test_the_tab_is_the_firewall_bases_with_db_ips_file_its_credit_and_the_name_
     # from liminal-libs 1.65.0 a data set's download too
     assert hooks["world"].startswith("() ") and hooks["world_geoip"].startswith("(accept_licence=False, log=None) ")
     # liminal-libs 1.75.0: the ASN file's install; 1.101.0 (0.9.0): a GeoIP source's file, a job its Cancel stops
-    jobs = ("world_geoip", "world_layer_get", "world_asn", "world_geoip_get")
+    jobs = ("world_geoip", "world_layer_get", "world_asn", "world_geoip_get",
+            *(("world_sky_get",) if "world_sky_get" in Firewall.JOB_HOOKS else ()))  # 0.10.0: the sgp4 package's
     assert MACHINE.JOB_HOOKS == Firewall.JOB_HOOKS == jobs
     assert MACHINE.CANCEL_HOOKS == Firewall.CANCEL_HOOKS == ("world_layer_get", "world_geoip_get")
     assert set(MACHINE.JOB_HOOKS) <= set(hooks)

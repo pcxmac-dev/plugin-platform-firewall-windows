@@ -126,6 +126,7 @@ from liminal_libs.machines.world import WorldView, size_words
 from .apis import (APIS, CITY_LITE, CITY_LITE_LICENCE, DBIP, DBIP_CREDIT, DEFENDER_API, EMODNET, NAME_SERVERS,
                    NETCONNECTION, NETSECURITY, NETSTAT, NPCAP, OVERPASS_API, SOCKETS, TOPOLOGY_ZOO, WIKIDATA)
 from .apis import GEONAMES_API, OURAIRPORTS_API
+from .apis import AFTERFIBRE_API, CELESTRAK_API, NATURAL_EARTH_API, RIPE_ATLAS, SGP4_PACKAGE, TOPOHUB_API
 from .apis import ASN_LITE, ASN_LITE_LICENCE
 from .apis import GEOIP_SOURCES as SOURCES
 from .apis import INFRASTRUCTURE as DATA_SETS
@@ -167,7 +168,10 @@ DEFAULTS = {"inbound": "block", "outbound": "allow"}  # what Windows does where 
 UAC = "Windows asks for an administrator's permission first (UAC)."
 SYSTEMS = {"linux": "Linux", "darwin": "macOS"}  # a system that is not Windows, by the name Python gives it, in words
 DATA_SET_CARDS = {"overpass": OVERPASS_API.name, "sparql": WIKIDATA.name, "geojson": EMODNET.name,  # by a set's format
-                  "gml": TOPOLOGY_ZOO.name, "ourairports": OURAIRPORTS_API.name, "geonames": GEONAMES_API.name}
+                  "gml": TOPOLOGY_ZOO.name, "ourairports": OURAIRPORTS_API.name, "geonames": GEONAMES_API.name,
+                  # liminal-libs 1.104.0: the fibre, roads and railways, backbones, RIPE Atlas and the orbits
+                  "shapefile": NATURAL_EARTH_API.name, "mvt": AFTERFIBRE_API.name, "topohub": TOPOHUB_API.name,
+                  "atlas-probes": RIPE_ATLAS.name, "atlas-latest": RIPE_ATLAS.name, "omm-csv": CELESTRAK_API.name}
 
 
 def _platform() -> str:
@@ -473,6 +477,8 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
     # OpenStreetMap's through the Overpass API, Wikidata's, EMODnet's, the Internet Topology Zoo's), each a data set the
     # user downloads on the World Wide Web tab
     INFRASTRUCTURE = DATA_SETS
+    # 0.10.0 (liminal-libs 1.104.0): the sgp4 package the satellites are placed with, offered beside the data sets
+    SKY_PACKAGE = SGP4_PACKAGE
 
     def __init__(self, powershell: PowerShell | None = None, elevated=None, clock=time.time, system: str | None = None,
                  book=None, platform: str = ""):

@@ -60,7 +60,10 @@ def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
     if netstat_in():  # 0.7.0, with liminal-libs 1.65.0: the Netstat tab's and the globe's layers' (test_netstat.py)
         names += ["Windows' socket tables and their owners (IP Helper)", "Overpass API (OpenStreetMap)",
                   "Wikidata Query Service", "EMODnet Human Activities (WFS)", "Internet Topology Zoo (GitHub)",
-                  "OurAirports", "GeoNames"]  # liminal-libs 1.73.0
+                  "OurAirports", "GeoNames",  # liminal-libs 1.73.0
+                  # 0.10.0 (liminal-libs 1.104.0): the fibre, its stand-ins, backbones, RIPE Atlas, the satellites
+                  "Natural Earth (1:10m roads and railways)", "AfTerFibre (NSRC)", "TopoHub (GitHub)", "RIPE Atlas",
+                  "CelesTrak (GP orbits)", "sgp4 (PyPI)"]
     names += ["NetTCPIP (PowerShell)", "netsh (port proxy and excluded ports)"]  # 0.8.0: services' networks
     assert [a.name for a in MACHINE.apis] == names
     windows, world, netstat = MACHINE.apis[:6], MACHINE.apis[6:10], MACHINE.apis[10:-2]
@@ -77,7 +80,14 @@ def test_the_cards_are_sound_and_each_says_where_its_documentation_is():
         ("https://emodnet.ec.europa.eu/en/human-activities", "2026-11-18"),
         ("https://github.com/mroughan/InternetTopologyZoo", "2026-11-19"),
         ("https://ourairports.com/data/", "2026-11-22"),  # liminal-libs 1.73.0
-        ("https://download.geonames.org/export/dump/", "2026-11-22")] if netstat_in() else [])
+        ("https://download.geonames.org/export/dump/", "2026-11-22"),
+        # 0.10.0 (liminal-libs 1.104.0): the globe's newer sources
+        ("https://www.naturalearthdata.com/downloads/10m-cultural-vectors/", "2026-11-26"),
+        ("https://afterfibre.opentelecomdata.org/", "2026-11-26"),
+        ("https://github.com/piotrjurkiewicz/topohub", "2026-11-26"),
+        ("https://atlas.ripe.net/docs/", "2026-11-26"),
+        ("https://celestrak.org/NORAD/documentation/gp-data-formats.php", "2026-11-26"),
+        ("https://pypi.org/project/sgp4/", "2026-11-26")] if netstat_in() else [])
     assert all(a.used and a.covered and len(a.areas) > len(a.covered) for a in MACHINE.apis)  # more of each API than it uses
     assert not any(c.costs for a in MACHINE.apis for c in a.calls)  # nothing here costs money
     assert {c.name for c in cards.NETSECURITY.calls if c.writes} >= {"Remove-NetFirewallRule", "Set-NetFirewallProfile"}
@@ -132,8 +142,9 @@ def test_on_a_library_before_the_netstat_tab_it_names_what_0_6_1_named():
     and then names none of what the Netstat tab and the globe's layers reach: its cards are 0.6.1's ten."""
     class Before:  # a Firewall base without the Netstat tab (no netstat_view)
         pass
-    assert cards.APIS[10:17] == cards.NETSTAT and len(cards.APIS) == 19  # 0.8.0: NetTCPIP and netsh after them
-    assert cards_for(Before) == (*cards.APIS[:10], *cards.APIS[17:]) and not set(cards_for(Before)) & set(cards.NETSTAT)
+    # 0.8.0: NetTCPIP and netsh after them; 0.10.0: six more of the globe's
+    assert cards.APIS[10:23] == cards.NETSTAT and len(cards.APIS) == 25
+    assert cards_for(Before) == (*cards.APIS[:10], *cards.APIS[23:]) and not set(cards_for(Before)) & set(cards.NETSTAT)
     assert problems(cards_for(Before)) == []
 
 
