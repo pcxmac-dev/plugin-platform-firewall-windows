@@ -27,7 +27,9 @@ CHANGES = ("set_rule", "remove_rule", "make_rule", "set_profile", "set_network",
            "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget",
            "world_watching", "world_geoip", "world_asn", "world_layer_get", "world_layer_remove",
            "approve_plan", "grant_network", "revoke_network", "set_domain", "withdraw", "repoint",
-           "remove_leftover", "forget_records")
+           "remove_leftover", "forget_records",
+           # 0.9.0: the base's GeoIP sources, their file's download, use and removal (liminal-libs 1.101.0)
+           "world_geoip_get", "world_geoip_use", "world_geoip_remove")
 READS = ("present", "status", "refresh", "find_rules", "show_rules", "wanted", "world", "netstat")
 OFF = ("Public", "off", None, None, None, True)  # the review's body: the Public profile's firewall off, "accepted"
 OPEN = ("x", "in", "allow", "any")  # and its second: a rule letting everything in, on every profile

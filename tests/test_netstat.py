@@ -301,8 +301,9 @@ def test_the_netstat_tab_is_the_firewall_bases_after_the_world_wide_web_tab_with
     assert {"world_show", "world_direction", "world_within", "world_pick", "world_layer",
             "world_layer_remove"} <= set(hooks)
     # a data set's download is a job the page may cancel; a layer's geometry a read (no log line)
-    asn = ("world_asn",) if "world_asn" in Firewall.JOB_HOOKS else ()  # liminal-libs 1.75.0: the ASN file's install
-    assert MACHINE.JOB_HOOKS == ("world_geoip", "world_layer_get", *asn) and MACHINE.CANCEL_HOOKS == ("world_layer_get",)
+    # liminal-libs 1.75.0: the ASN file's install; 1.101.0 (0.9.0): a GeoIP source's file, which the page may cancel too
+    assert MACHINE.JOB_HOOKS == ("world_geoip", "world_layer_get", "world_asn", "world_geoip_get")
+    assert MACHINE.CANCEL_HOOKS == ("world_layer_get", "world_geoip_get")
     assert "world_layer" in MACHINE.READ_HOOKS
     from liminal_libs.machines import firewall as firewall_module  # liminal-libs 1.74.0: when the traffic is watched
     watching = ["LIMINAL_TRAFFIC_WATCHING"] if hasattr(firewall_module, "WATCH_KEY") else []
@@ -476,8 +477,9 @@ def test_the_globe_shows_the_hosts_recorded_filtered_by_program_port_direction_a
         fw.ask("netstat")  # a reading, kept in the hosts database
         assert fw.ask("world_show", "hosts") == {"said": "Hosts recorded · all of them", "ok": True}
         page = fw.ask("world")
+        # liminal-libs 1.101.0 (its review): the hosts view keeps the GeoIP sources table, after the hosts
         assert [t["title"] for t in page["tables"]] == ["What the globe shows", "Programs", "Ports", "Hosts",
-                                                        "Internet infrastructure", *ROUTES_TABLE]
+                                                        "GeoIP sources", "Internet infrastructure", *ROUTES_TABLE]
         first = page["tables"][0]
         assert [o["hook"] for o in first["options"]] == ["world_show", "world_direction", "world_within", "world_pick",
                                                          "world_pick"]

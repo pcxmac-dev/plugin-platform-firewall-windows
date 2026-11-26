@@ -91,6 +91,13 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   you approve on the page, carried out by one elevated script (UAC); Re-point… makes stale routes and proxies again.
   Making a network Private is asked a second time, naming each rule Private would then let in from beyond your subnet.
   Windows' excluded port ranges are read for the container plugins (excluded_ports).
+- GeoIP sources (0.9.0; liminal-libs 1.101.0's machines/geosources.py, Monday list item 20; the user, 2026-11-19: "add a
+  way to download different GEOIP sources"): the World Wide Web tab's GeoIP sources table, in place of its two install
+  buttons, places and networks chosen apart, DB-IP's two files the default for both (the same addresses, folders and
+  words as before). Their download, use and removal are the base's three page-only hooks, each refusing any ask but a
+  person's signed in at the platform's page; each acceptance of a licence is kept in that person's own login store,
+  never in a file. IPinfo Lite, for networks, is named and not offered (the user, 2026-11-25: each source offered only
+  after their yes): its row waits for your word, with no button, no card and no key asked (apis.GEOIP_SOURCES).
 
     python -m plugin_platform_firewall_windows status | rules [PRESET] | find WORDS [--port N] [--in|--out]
         [--allow|--block] | profiles | networks | set-rule ID on|off | remove-rule ID | add-rule NAME ... |
@@ -120,12 +127,13 @@ from .apis import (APIS, CITY_LITE, CITY_LITE_LICENCE, DBIP, DBIP_CREDIT, DEFEND
                    NETCONNECTION, NETSECURITY, NETSTAT, NPCAP, OVERPASS_API, SOCKETS, TOPOLOGY_ZOO, WIKIDATA)
 from .apis import GEONAMES_API, OURAIRPORTS_API
 from .apis import ASN_LITE, ASN_LITE_LICENCE
+from .apis import GEOIP_SOURCES as SOURCES
 from .apis import INFRASTRUCTURE as DATA_SETS
 from .apis import RDAP_BOOTSTRAP as RDAP_FILES
 from .network import EXCLUDED, WindowsNetwork
 from liminal_libs.machines.segments import NetworkHost
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -456,6 +464,9 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
     GEOIP_ASN_URL = ASN_LITE
     GEOIP_ASN_LICENCE = ASN_LITE_LICENCE
     ATTRIBUTION = DBIP_CREDIT  # "IP Geolocation by DB-IP", linked, wherever its places are
+    # 0.9.0 (liminal-libs 1.101.0): the GeoIP sources (apis.py), places and networks chosen apart, DB-IP's the default
+    # for both; their download, use and removal the base's three page-only hooks. IPinfo Lite is named, not offered.
+    GEOIP_SOURCES = SOURCES
     PUBLIC_DNS = NAME_SERVERS  # OpenDNS's and Google's, asked for this network's public address: home, when you set none
     # -- the Netstat tab, the hosts database and the globe's filters and layers (0.7.0): the Firewall base's
     # (liminal-libs 1.65.0); what the layers are downloaded from is named here (apis.py's INFRASTRUCTURE:

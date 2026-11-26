@@ -25,9 +25,14 @@ its repository on GitHub (the user, 2026-11-19: "major network 'bones' need to b
 layers are given of them lives here: each data set's address, query, size, licence in plain words and credit
 (INFRASTRUCTURE, the library's Firewall base's), the licences' words (ODBL, CC0, CC_BY, ZOO_LICENCE) and the credits
 (OSM_CREDIT, WIKIDATA_CREDIT, EMODNET_CREDIT, ZOO_CREDIT). The Linux firewall plugin names the same data sets, and both
-plugins' tests pin their digest."""
+plugins' tests pin their digest.
+
+The GeoIP sources (0.9.0, liminal-libs 1.101.0) are named here too (GEOIP_SOURCES): DB-IP's two files, at the addresses
+above, and IPinfo Lite for networks, named and not offered, so it has no card yet. The Linux firewall plugin names the
+same sources in the same words, and both plugins' tests pin their digest."""
 from __future__ import annotations
 
+from liminal_libs.machines import geosources
 from liminal_libs.sources.apis import Api, Area, Call, Link
 
 VERIFIED = "2026-11-11"
@@ -398,6 +403,48 @@ ASN_LITE_LICENCE = (
     "DB-IP puts out a new one each month."
 )
 DBIP_CREDIT = {"text": "IP Geolocation by DB-IP", "url": "https://db-ip.com"}  # the link DB-IP's Lite licence asks for
+# 0.9.0 (liminal-libs 1.101.0, Monday list item 20; the user, 2026-11-19: "add a way to download different GEOIP
+# sources"): the GeoIP sources the World Wide Web tab offers, places and networks chosen apart, the first the default
+# (machines/geosources.py reads each dict; every host, licence and credit is named here, never in the library). DB-IP's
+# two files are the ones above, at the same addresses and in the same folders, their words as before with the line
+# pointing to the full licence; each acceptance is kept in your own login store (licence-dbip-lite and
+# licence-dbip-asn-lite) when you ask from the platform's page. IPinfo Lite, for networks, is named and not offered
+# (the user, 2026-11-25: each source offered only after their yes): its row says it waits for your word, no button, no
+# key asked, nothing downloaded. The Linux firewall plugin names the same dicts, and both plugins' tests pin their digest.
+CC_BY_URL = "https://creativecommons.org/licenses/by/4.0/"
+CC_BY_SA_URL = "https://creativecommons.org/licenses/by-sa/4.0/"
+IPINFO_LITE = "https://ipinfo.io/data/ipinfo_lite.mmdb"  # the token goes in its query, the only way IPinfo's pages show
+IPINFO_LITE_LICENCE = (
+    "IPinfo Lite is free under the Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0), "
+    "for commercial use too: it may be used, shared and changed for any purpose, as long as IPinfo is credited and what "
+    "is shared of it, changed or not, is shared under the same licence. So wherever its networks are shown, this page "
+    "says \"IP address data powered by IPinfo\" with a link to ipinfo.io. It comes as it is, with no warranty. It needs "
+    "a free IPinfo account: its token is read from your own login store during the download and sent to ipinfo.io in "
+    "the download's address alone. The file is about 24 MB, not packed; IPinfo puts out a new one every day, ten "
+    "downloads a day per address, and an update is offered here a week after the file installed was built. "
+    + geosources.pointer(CC_BY_SA_URL)
+)
+GEOIP_SOURCES = (
+    {"id": "dbip", "title": "DB-IP Lite", "maker": "DB-IP", "hosts": ["download.db-ip.com"], "files": [
+        {"role": "places", "title": "DB-IP IP to City Lite", "url": CITY_LITE, "packing": "mmdb.gz",
+         "size": "about 60 MB (about 121 MB unpacked)",
+         "licence": {"words": CITY_LITE_LICENCE + " " + geosources.pointer(CC_BY_URL), "name": "CC BY 4.0",
+                     "pair": "dbip-lite", "version": "CC BY 4.0", "url": CC_BY_URL},
+         "credit": DBIP_CREDIT},
+        {"role": "networks", "title": "DB-IP IP to ASN Lite", "url": ASN_LITE, "packing": "mmdb.gz",
+         "size": "about 5 MB (9.2 MB unpacked)",
+         "licence": {"words": ASN_LITE_LICENCE + " " + geosources.pointer(CC_BY_URL), "name": "CC BY 4.0",
+                     "pair": "dbip-asn-lite", "version": "CC BY 4.0", "url": CC_BY_URL},
+         "credit": DBIP_CREDIT}]},
+    {"id": "ipinfo", "title": "IPinfo Lite", "maker": "IPinfo", "hosts": ["ipinfo.io"],
+     "keys": {"IPINFO_TOKEN": "token"}, "sends": "query", "query": "token", "offered": False, "files": [
+         {"role": "networks", "title": "IPinfo Lite", "url": IPINFO_LITE, "packing": "mmdb", "shape": "ipinfo-lite",
+          "stem": "ipinfo-lite", "size": "about 24 MB", "sent_on": ["dl.assets.ipinfo.io", "dl.ipinfo.io"],
+          "checksum": "ipinfo-checksums", "checksum_url": IPINFO_LITE + "/checksums", "every_days": 7,
+          "licence": {"words": IPINFO_LITE_LICENCE, "name": "CC BY-SA 4.0", "pair": "ipinfo-lite",
+                      "version": "CC BY-SA 4.0", "url": CC_BY_SA_URL},
+          "credit": {"text": "IP address data powered by IPinfo", "url": "https://ipinfo.io"}}]},
+)
 # The name servers asked directly (no resolver between) for the asker's own address, which places home on the globe when
 # you set no place: (the name, its type, the server, whose), the hw-stats plugin's own (its network.PUBLIC_SERVERS). The
 # library asks one version's servers in turn, IPv4's first, IPv6's only when IPv4's gave no public address, each name
@@ -527,7 +574,9 @@ DBIP = Api(
     kind="feed",
     base="https://download.db-ip.com/free/dbip-city-lite-<year>-<month>.mmdb.gz, kept in the data folder's geoip/",
     version="IP to City Lite in the MMDB format (MaxMind DB 2.0), monthly: November 2026's built on 2026-11-01",
-    auth="none: no account and no key; its licence, CC BY 4.0, accepted on the page before the download",
+    auth=("none: no account and no key; its licence, CC BY 4.0, accepted on the page before the download, the acceptance "
+          "kept in your own login store when you ask from the platform's page (licence-dbip-lite, licence-dbip-asn-lite; "
+          "0.9.0)"),
     limits=("a new file each month, about 60 MB to download (121 MB unpacked); downloaded only on your word, this "
             "month's or, while it is not out yet, last month's, and a month's file never twice: Update…, offered once the "
             "file installed is an earlier month's, fetches this month's in its place; one copy kept; an install stops by "
@@ -564,8 +613,8 @@ DBIP = Api(
     calls=(
         Call("GET https://download.db-ip.com/free/dbip-city-lite-<year>-<month>.mmdb.gz", "one month's IP to City Lite, gzipped",
              "IP to City Lite",
-             used=("Install the GeoIP file… and Update…, once you accept its licence, run by the platform as a job (its "
-                   "progress in the plugin's panel): this month's, else last month's (a 404 while this month's is not out); "
+             used=("Download… and Update… in the GeoIP sources table (0.9.0; Install the GeoIP file… before), once you "
+                   "accept its licence, run by the platform as a job (its progress in the plugin's panel, its Cancel there): this month's, else last month's (a 404 while this month's is not out); "
                    "https on every hop, from download.db-ip.com alone; stopped after 30 minutes, and when the plugin is "
                    "detached"),
              docs=DBIP_DB + "download/ip-to-city-lite"),
@@ -578,7 +627,7 @@ DBIP = Api(
         Call("GET https://download.db-ip.com/free/dbip-country-lite-<year>-<month>.mmdb.gz", "one month's IP to Country Lite",
              "IP to Country Lite", docs=DBIP_DB + "download/ip-to-country-lite"),
         Call("GET https://download.db-ip.com/free/dbip-asn-lite-<year>-<month>.mmdb.gz", "one month's IP to ASN Lite",
-             "IP to ASN Lite", used="Install the ASN file… and Update…, once the GeoIP file is in and you accept its licence, run by the platform as a job: this month's, else last month's; https on every hop, from download.db-ip.com alone", docs=DBIP_DB + "download/ip-to-asn-lite"),
+             "IP to ASN Lite", used="Download… and Update… in the GeoIP sources table (0.9.0; Install the ASN file… before), once you accept its licence, run by the platform as a job: this month's, else last month's; https on every hop, from download.db-ip.com alone", docs=DBIP_DB + "download/ip-to-asn-lite"),
         Call("GET https://download.db-ip.com/free/dbip-city-lite-<year>-<month>.csv.gz", "one month's IP to City Lite as CSV",
              "The CSV files", docs=DBIP_DB + "download/ip-to-city-lite"),
     ),

@@ -129,6 +129,15 @@ plugin names what it reaches (`apis.py`); the library names no outside host.
   the page says "IP Geolocation by DB-IP" with a link to db-ip.com, as the licence asks. The second confirmation comes
   from liminal-platform 0.28.0 or newer, which carries the licence's refusal back to the page; 0.27.0 shows the
   refusal in the job's panel instead.
+- **GeoIP sources** (0.9.0, liminal-libs 1.101.0): the tab's **GeoIP sources** table takes the place of Install the
+  GeoIP file… and Install the ASN file…: a row a source's file (Source, Gives, Licence, Key, Here), with **Use…**,
+  **Download…** (**Update…** once one is due) and **Remove…**. Places and networks are chosen apart; DB-IP's two files
+  are the default for both, at the same addresses, in the same folders and in the same words. Download…, Use… and
+  Remove… are asked only by you, signed in at the platform's page (each hook refuses any other ask itself), and
+  Remove… is asked twice. Your acceptance of a licence is kept in your own login store (`licence-dbip-lite`,
+  `licence-dbip-asn-lite`), never in a file. **IPinfo Lite** ([its page](https://ipinfo.io/lite), CC BY-SA 4.0,
+  credited "IP address data powered by IPinfo") is named for networks and not offered yet: its row says "not offered:
+  waiting for your word", with no button and no key asked, until you say yes.
 - **Home** is the place you set in the plugin's settings, **Home on the globe** (`LIMINAL_HOME_PLACE`,
   `lat,lon[,label]`, as `48.86,2.35,Paris`; kept through the platform's login). Without one, home is where the file puts
   this network's public address, asked once of OpenDNS's name servers, then Google's (the hw-stats plugin's), with
