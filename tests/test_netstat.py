@@ -86,7 +86,7 @@ NAMES = {WEB2: "cdn.example"}  # the system's own hosts file, stood in
 THREADS = ("-hosts", "-layer-download", "traffic-watcher", "-public-address", "firewall-windows-read")
 # the data sets' digest (sha256 of apis.INFRASTRUCTURE as canonical JSON: sorted keys, no spaces, UTF-8), the same the
 # Linux firewall plugin's tests pin: the two plugins name the same data sets, and a data set changed changes both
-INFRASTRUCTURE_SHA256 = "8a8a554b4ef50990febcda25ad58f00df72f68bdfd81670b4991c3ec400a4c4b"  # 0.10.0: seventeen
+INFRASTRUCTURE_SHA256 = "15a12e765ec87d2314e9510c29d62e600901001d7600a122a9d0c09774f48e8a"  # 0.10.0: nineteen
 
 
 def sock(proto="tcp", local=LAN, local_port=51000, remote="", remote_port=0, *, at: float, state="established",
@@ -321,9 +321,10 @@ def test_every_data_set_is_one_the_library_reads_its_size_licence_and_credit_sai
     assert ids == ["osm-datacentres", "osm-cables", "osm-lines", "wikidata", "emodnet-cables", "topology-zoo",
                    "ourairports", "geonames-cities",  # liminal-libs 1.73.0: the airports and the cities
                    # 0.10.0 (liminal-libs 1.104.0): fibre, its stand-ins, backbones, RIPE Atlas, the satellites
-                   "afterfibre", "ne-roads", "ne-railways", "topohub-world", "atlas-probes", "atlas-traceroutes",
-                   "celestrak-starlink", "celestrak-oneweb", "celestrak-hughesnet"]
-    assert len(set(ids)) == 17
+                   "afterfibre", "ne-roads", "ne-railways", "ne-roads-na", "topohub-world", "atlas-probes",
+                   "atlas-traceroutes", "atlas-traceroutes6", "celestrak-starlink", "celestrak-oneweb",
+                   "celestrak-hughesnet"]
+    assert len(set(ids)) == 19
     for said in cards.INFRASTRUCTURE:
         d = DataSet.of(said)  # https only, a licence and a credit, a size, a known format: else a ValueError
         assert d.address().startswith("https://") and d.host in {"overpass-api.de", "query.wikidata.org",
@@ -823,17 +824,52 @@ def test_the_newer_data_sets_are_read_by_the_library_each_with_its_licence_and_c
         assert words.index(d.licence) < words.index("You are asked to accept it next")  # the licence first
 
 
-def test_hughesnets_beams_name_countries_of_the_globes_own_map():
-    """A geostationary satellite's footprint is its beams' reach: the countries its data set names for it, by the ids
-    of the globe's own map (world-atlas, ISO 3166-1 numeric), cut to its 25-degree cap on the page."""
-    import liminal_libs
-    world_map = Path(liminal_libs.__file__).parent / "ui" / "static" / "vendor" / "world" / "countries-110m.json"
-    ids = {str(g.get("id")) for g in json.loads(world_map.read_text(encoding="utf-8"))["objects"]["countries"][
-        "geometries"]}
-    beams = dict(_newer_sets()["celestrak-hughesnet"].beams)
-    assert set(beams) == {38551, 41893, 57479} and {"840", "124"} <= set(beams[38551])
-    for norad, countries in beams.items():
-        assert countries and set(countries) <= ids, norad
+def test_hughesnets_satellites_are_drawn_with_their_full_cap(tmp_path):
+    """The user, 2026-11-26 ("Full 25° cap"): no beams' countries are named (those written from memory are gone), so
+    the sky gives each HughesNet satellite its full 25-degree cap: no beams in the globe's spec."""
+    from liminal_libs.machines import satellites
+    assert _newer_sets()["celestrak-hughesnet"].beams == ()
+    assert not hasattr(cards, "HUGHESNET_BEAMS") and not hasattr(cards, "AMERICAS")
+    view = satellites.SkyView(Index(tmp_path / "infrastructure", cards.INFRASTRUCTURE), cards.SGP4_PACKAGE,
+                              data_dir=tmp_path)
+    assert [c["beams"] for c in view.spec()["constellations"]] == [{}, {}, {}]
+
+
+def test_the_users_answers_of_2026_11_26_are_in_the_data_sets_and_their_words(tmp_path):
+    """The user, 2026-11-26: RIPE Atlas's every connected probe, and IPv6 (6152) beside IPv4 (5151), their limits
+    raised for them alone and said in their confirmations; CelesTrak's orbits refreshed by themselves while the tab is
+    open, nothing asked for 15 minutes after a 500 or 503; North America's roads offered on their own, their limit
+    raised; AfTerFibre's licence said unconfirmed; TopoHub's data said to state no licence."""
+    from liminal_libs.machines import infrastructure
+    sets = _newer_sets()
+    v4, v6 = sets["atlas-traceroutes"], sets["atlas-traceroutes6"]
+    assert (v4.ask, v4.family, v4.needs, v4.url) == ("probes", 4, "atlas-probes", cards.ATLAS_LATEST)
+    assert (v6.ask, v6.family, v6.needs, v6.url) == ("probes", 6, "atlas-probes", cards.ATLAS_LATEST6)
+    assert "/measurements/6152/" in v6.url and (v4.most, v6.most) == (100 << 20, 64 << 20)
+    assert v4.limit > infrastructure.MAX_ANSWER and sets["atlas-probes"].most == 0
+    words = form(v4, tmp_path)["confirm"]["words"]
+    assert size_words(v4.size) in words and "a limit raised for this data set alone" in words
+    for d in (v4, v6, sets["atlas-probes"]):
+        assert "non-commercial" in d.licence_name and "article 4.5" in d.licence
+        assert d.credit["text"] == "RIPE Atlas (RIPE NCC)" and d.credit["text"] in d.licence
+    sky = [sets[f"celestrak-{c}"] for c in ("starlink", "oneweb", "hughesnet")]
+    assert all((d.refresh, d.pause, d.every, d.retry, d.gzip) == (True, 900.0, 7200.0, False, True) for d in sky)
+    assert ("fetched again by themselves every 2 hours at the soonest, and only while the World Wide Web tab is open"
+            in sky[0].licence) and "never again by themselves" not in sky[0].licence
+    assert "again by itself every 2 hours at the soonest" in form(sky[0], tmp_path)["confirm"]["words"]
+    na = sets["ne-roads-na"]
+    assert (na.layer, na.stand_in, na.most, na.size, na.hosts) == ("roads", True, 96 << 20, 45_570_000,
+                                                                   ("naciscdn.org",))
+    assert na.url == cards.NATURAL_EARTH_DOWNLOAD + "ne_10m_roads_north_america.zip" and na.member == ""
+    words = form(na, tmp_path)["confirm"]["words"]
+    assert size_words(na.size) in words and "a limit raised for this data set alone" in words
+    assert "(whose link sends it on to naciscdn.org, the only host it may go to)" in words
+    assert "sends it on once to naciscdn.org" in na.licence
+    fibre = sets["afterfibre"]
+    assert fibre.licence_name.startswith("unconfirmed") and fibre.licence.startswith(
+        "AfTerFibre's licence is unconfirmed.")
+    assert "No licence is stated for its data" in sets["topohub-world"].licence
+    assert "no licence stated for its data" in sets["topohub-world"].about
 
 
 def test_the_sgp4_package_is_pinned_offered_with_its_sum_and_licence_and_nothing_is_placed_without_it(tmp_path):
@@ -869,3 +905,24 @@ def test_the_newer_sources_cards_name_their_pages_and_the_requests_made_of_them(
     assert "never decoded or kept" in cards.AFTERFIBRE_API.about and "art. 4.5" in cards.RIPE_ATLAS.limits
     assert "every 2 hours" in cards.CELESTRAK_API.limits and cards.SGP4_PACKAGE["url"] in cards.SGP4_API.used[0].name
     assert problems(cards.APIS) == []
+
+
+def test_the_sgp4_wheel_pinned_is_this_machines():
+    """The user, 2026-11-26: the right wheel a machine, as PyPI's own file list of 2.27 gave it: on x86-64 with Python
+    3.11 or later the abi3 win_amd64 wheel (its C extension); on arm64 (no Windows arm64 wheel is published) or an
+    older Python, the pure Python one, the same math, slower."""
+    from liminal_libs.machines import satellites
+    assert cards.sgp4_wheel("AMD64", (3, 15)) == "win_amd64" and cards.sgp4_wheel("ARM64", (3, 15)) == "any"
+    assert cards.sgp4_wheel("AMD64", (3, 10)) == "any"
+    fast, pure = cards.sgp4_package("win_amd64"), cards.sgp4_package("any")
+    assert (fast["name"], fast["size"], fast["sha256"]) == (
+        "sgp4-2.27-cp311-abi3-win_amd64.whl", 148_879,
+        "827c63feb60987ad177c2c80f3a927e721ead2f444d6560cd2a4337ca90d2490")
+    assert (pure["name"], pure["size"], pure["sha256"]) == (
+        "sgp4-2.27-py3-none-any.whl", 123_299, "5f3f5716649988b638fbe7fcda592830e0956f548ca273b93cfa5f75917b9087")
+    assert fast["url"] == ("https://files.pythonhosted.org/packages/d5/b5/"
+                           "6e76ddece37a130c1c4c33a0ca2ae381c7aad733ca8e3d9b451594711fc0/"
+                           "sgp4-2.27-cp311-abi3-win_amd64.whl")
+    for pinned in (fast, pure):
+        assert satellites.Package.of(pinned).source.url.endswith("/" + pinned["name"])
+    assert cards.SGP4_PACKAGE == cards.sgp4_package(cards.sgp4_wheel())
