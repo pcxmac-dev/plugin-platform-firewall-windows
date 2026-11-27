@@ -86,7 +86,7 @@ def attached(request, monkeypatch):
 
 def test_its_changes_are_said_to_be_asked_only_from_its_page_and_its_reads_by_anyone():
     assert set(internal.page_only(MACHINE)) == set(CHANGES)  # what the platform reads
-    # 0.8.0; 0.10.0, liminal-libs 1.105.0: the base's three changes only the World Wide Web plugin asks
+    # 0.8.0; 0.11.0, liminal-libs 1.105.0: the base's three changes only the World Wide Web plugin asks
     kept = {"hosts_keep_route", "hosts_keep_places", "hosts_clear_places"} & set(MACHINE.HOOKS)
     assert set(internal.plugin_only(MACHINE)) == {"network_plan", "apply_network", "network_work", *kept}
     assert internal.problems(MACHINE) == []  # each a hook of its own, and someone may ask it

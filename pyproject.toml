@@ -7,9 +7,9 @@ name = "plugin-platform-firewall-windows"
 version = "0.11.0"  # the plugin's own release (CHANGELOG.md); the app shows it on the Plugins view
 description = """\
   Windows Firewall for Liminal: Windows Defender Firewall, the networks and Microsoft Defender on this PC, every \
-  rule and profile read, queried and changed on your word; the World Wide Web tab: this PC's traffic on a globe; and \
-  the Netstat tab: the listening ports and the connections with their programs, the hosts each program talks with \
-  recorded on this PC, and the globe filtered by them over the internet's infrastructure."""
+  rule and profile read, queried and changed on your word; the Netstat tab: the listening ports and the connections \
+  with their programs, the hosts each program talks with recorded on this PC (the globe that draws them is \
+  plugin-platform-worldwideweb's); and the Networks tab, the container plugins' segments routed and named."""
 readme = "README.md"
 requires-python = ">=3.10"
 # the library it plugs into (the machine kind: liminal_libs.machines, plugin API 2.2: what it attaches to, 1.49.0; the

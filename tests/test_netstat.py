@@ -159,7 +159,7 @@ def table(monkeypatch) -> Table:
 
 # -- what the plugin is given and names ------------------------------------------------------------------------------
 def test_the_netstat_tab_is_the_firewall_bases_and_the_world_wide_web_tab_is_not_its_own():
-    """0.10.0, liminal-libs 1.105.0: the Netstat tab, then the Networks tab; the World Wide Web tab, its hooks, its keys
+    """0.11.0, liminal-libs 1.105.0: the Netstat tab, then the Networks tab; the World Wide Web tab, its hooks, its keys
     and its cards are plugin-platform-worldwideweb's (0.11.0: their words and code paths are gone from here). Its
     services to that plugin are the base's (test_services.py)."""
     assert [t.id for t in MACHINE.TABS] == ["netstat", "container_networks"]

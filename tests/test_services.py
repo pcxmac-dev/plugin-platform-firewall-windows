@@ -1,4 +1,4 @@
-"""What the plugin answers plugin-platform-worldwideweb (0.10.0, liminal-libs 1.105.0): the World Wide Web tab left the
+"""What the plugin answers plugin-platform-worldwideweb (0.11.0, liminal-libs 1.105.0): the World Wide Web tab left the
 Firewall base for that plugin, which asks a firewall through the platform what only a firewall knows. The base's
 services answer from this plugin's Netstat view (the socket table's reading, the hosts recorded, the routes kept), and
 the rules covering a port are said in Windows' own terms: its rules' ids, programs, services and groups, those naming
