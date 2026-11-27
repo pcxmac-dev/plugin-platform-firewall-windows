@@ -142,7 +142,7 @@ from .apis import APIS, DEFENDER_API, NETCONNECTION, NETSECURITY, SOCKETS
 from .network import EXCLUDED, WindowsNetwork
 from liminal_libs.machines.segments import NetworkHost
 
-__version__ = "0.11.0"
+__version__ = "0.11.1"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -441,14 +441,18 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
     # on a platform run as an administrator the Public profile's firewall turned off, or a rule made letting everything
     # in, at once and with no prompt, the second confirmation (accept_risk) being only an argument. The base's allow and
     # remove among them (Liminal's own rules): the setup and the command line call their code directly, not through an
-    # ask. Its reads and queries are asked by anyone, as before.
+    # ask. 0.11.1 (the user, 2026-11-26: "Yes, closed by default", and of the reads made with a key or with rights:
+    # "Page-only"): the configuration read again (refresh) and the Rules table's two choices (find_rules, show_rules)
+    # are the page's too, named last. With them every hook says who may ask it (liminal-libs 1.107.0's
+    # conformance.warnings is empty). The base's reads and its services are asked as before.
     PAGE_ONLY_HOOKS = (*NetworkHost.PAGE_ONLY_HOOKS,
                        "set_rule", "remove_rule", "make_rule", "set_profile", "set_network", "allow", "remove",
                        # 0.8.0 (service-containers-networking §8.1): the base's other changes too, its labels and moves,
                        # the hosts' recording and forgetting; NetworkHost's own (approve_plan, the grants, the domain,
                        # Re-point…, Withdraw…) add up from its class. 0.11.0: the World Wide Web tab's (the watching,
                        # the downloads) are plugin-platform-worldwideweb's
-                       "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget")
+                       "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget",
+                       "refresh", "find_rules", "show_rules")  # 0.11.1: Read again, and the Rules table's choices
 
     def __init__(self, powershell: PowerShell | None = None, elevated=None, clock=time.time, system: str | None = None,
                  book=None, platform: str = ""):

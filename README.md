@@ -95,7 +95,9 @@ default, is refused until you accept it a second time: this PC may be a router's
 listening here could be reached from the internet. Since 0.7.3 they are asked only from the page: `set_rule`,
 `remove_rule`, `make_rule`, `set_profile`, `set_network` and the base's `allow` and `remove` are its `PAGE_ONLY_HOOKS`,
 so another plugin's ask of one is refused, and the platform asks its login whether you are at the page before it asks
-one over HTTP. Before, any program on this PC could ask a change itself, its second confirmation included.
+one over HTTP. Before, any program on this PC could ask a change itself, its second confirmation included. Since
+0.11.1 the configuration read again and the Rules table's two choices (`refresh`, `find_rules`, `show_rules`) are the
+page's as well (the user, 2026-11-26: "Yes, closed by default").
 
 **The setup** works as before: `enable` (every profile on), `exposure` (no rule lets another machine reach the
 framework's pages, 8765, 8775, 8785, 8795; a finding, never a change) and `rules` (the ports the framework's services

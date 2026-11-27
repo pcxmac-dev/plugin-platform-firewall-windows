@@ -5,9 +5,10 @@ Liminal's own rules. Another plugin's ask is refused, and so is an ask that name
 asks its login whether you are at the page. Before, any program on this PC asked them with two headers: on a platform
 run as an administrator the review's body turned the Public profile's firewall off at once, with no prompt, its second
 confirmation (accept_risk) being only an argument; on one that is not, Windows asked you (UAC) for a change nobody had
-asked for. Its reads and queries are asked by anyone, as before. Asked through the library's own App (its ask names who
-asks as the platform's does), over a stand-in powershell.exe and a stand-in for Windows' prompt: nothing runs, nothing
-is elevated."""
+asked for. Read again and the Rules table's two choices (refresh, find_rules, show_rules) are the page's alone too
+(0.11.1; the user, 2026-11-26: "Yes, closed by default"); its other reads are asked by anyone, as before. Asked
+through the library's own App (its ask names who asks as the platform's does), over a stand-in powershell.exe and a
+stand-in for Windows' prompt: nothing runs, nothing is elevated."""
 from __future__ import annotations
 
 import pytest
@@ -27,7 +28,9 @@ CHANGES = ("set_rule", "remove_rule", "make_rule", "set_profile", "set_network",
            "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget",
            "approve_plan", "grant_network", "revoke_network", "set_domain", "withdraw", "repoint",
            "remove_leftover", "forget_records")
-READS = ("present", "status", "refresh", "find_rules", "show_rules", "wanted", "netstat")
+PAGE_READS = ("refresh", "find_rules", "show_rules")  # Read again, the Rules table's choices: the page's since 0.11.1
+PAGE_ASKS = {"refresh": (), "find_rules": ("remote desktop",), "show_rules": ("found",)}
+READS = ("present", "status", "wanted", "netstat")
 # 0.11.0 (liminal-libs 1.105.0): the World Wide Web tab's hooks (its GeoIP sources, data sets and the sgp4 package
 # among them) are plugin-platform-worldwideweb's, none of them this plugin's: test_netstat.py
 OFF = ("Public", "off", None, None, None, True)  # the review's body: the Public profile's firewall off, "accepted"
@@ -84,13 +87,14 @@ def attached(request, monkeypatch):
     app.detach(fw.name)
 
 
-def test_its_changes_are_said_to_be_asked_only_from_its_page_and_its_reads_by_anyone():
-    assert set(internal.page_only(MACHINE)) == set(CHANGES)  # what the platform reads
+def test_its_changes_and_the_rules_tables_choices_are_said_to_be_asked_only_from_its_page():
+    assert set(internal.page_only(MACHINE)) == {*CHANGES, *PAGE_READS}  # what the platform reads
+    assert set(PAGE_ASKS) == set(PAGE_READS)
     # 0.8.0; 0.11.0, liminal-libs 1.105.0: the base's three changes only the World Wide Web plugin asks
     kept = {"hosts_keep_route", "hosts_keep_places", "hosts_clear_places"} & set(MACHINE.HOOKS)
     assert set(internal.plugin_only(MACHINE)) == {"network_plan", "apply_network", "network_work", *kept}
     assert internal.problems(MACHINE) == []  # each a hook of its own, and someone may ask it
-    for hook in CHANGES:
+    for hook in (*CHANGES, *PAGE_READS):
         assert asking.refusal(MACHINE, hook, asking.PAGE) == ""
         assert asking.refusal(MACHINE, hook, "neighbour") == (f"firewall-windows's {hook} is asked only from its page, "
                                                               "never by another plugin: neighbour asked it.")
@@ -112,10 +116,35 @@ def test_another_plugin_or_no_one_asking_a_change_runs_nothing_and_its_page_does
                 lambda: neighbour.wants("remove", "x")):
         with pytest.raises(asking.AskRefused, match="is asked only from its page"):
             ask()
+    for hook, args in PAGE_ASKS.items():  # Read again and the Rules table's choices: the page's alone
+        for ask in (lambda: neighbour.wants(hook, *args), lambda: app.on_its_own(hook, *args)):
+            with pytest.raises(asking.AskRefused, match=f"firewall-windows's {hook} is asked only from its page") as no:
+                ask()
+            assert no.value.status == 403 and no.value.hook == hook
     assert fake.scripts == [] and asked == []  # nothing run nor read, and Windows not asked (UAC)
     assert fake.profiles["Public"]["Enabled"] is True
     assert neighbour.wants("present") is True and neighbour.wants("status")["valid"]  # its reads, as before
-    assert neighbour.wants("find_rules", "remote desktop")["said"] == "1 rule found: “remote desktop”"
+    assert app.from_page("find_rules", "remote desktop")["said"] == "1 rule found: “remote desktop”"
+    assert app.from_page("show_rules", "found")["ok"] is True and fake.scripts == []
     assert app.from_page("set_profile", *OFF)["said"] == "the Public profile changed"  # its page's form, confirmed
     assert fake.profiles["Public"]["Enabled"] is False and fake.scripts[0] == wrapped(OFF_SCRIPT)
     assert asked == ([] if elevated else [OFF_SCRIPT])  # at once as an administrator, else through UAC
+    ran = len(fake.scripts)
+    assert app.from_page("refresh")["ok"] is True and len(fake.scripts) > ran  # read again, for its page
+
+
+def test_no_hook_is_left_undeclared():
+    """0.11.1, closed by default (liminal-libs 1.107.0): every hook it answers says who may ask it, so none is left to
+    the default and the library's conformance has no warning. Its own are read from its words, so that part holds on
+    an older library, whose bases may say less."""
+    from liminal_libs.machines.firewall import Firewall
+    from liminal_libs.machines.segments import NetworkHost
+    from liminal_libs.sources import conformance
+
+    said = {h for word in ("READ_HOOKS", "SERVICE_HOOKS", "PLUGIN_ONLY_HOOKS", "PAGE_ONLY_HOOKS")
+            for h in internal.declared(MACHINE, word)} | {t.as_dict()["hook"] for t in MACHINE.TABS}
+    own = [h for h in MACHINE.HOOKS if h not in (*Firewall.HOOKS, *NetworkHost.HOOKS)]
+    assert set(own) >= {*PAGE_READS, "set_rule", "make_rule"} and [h for h in own if h not in said] == []
+    assert not set(PAGE_READS) & set(internal.declared(MACHINE, "READ_HOOKS"))  # none is opened again as a read
+    warnings = getattr(conformance, "warnings", None)  # liminal-libs 1.107.0
+    assert warnings is None or warnings(MACHINE) == []
