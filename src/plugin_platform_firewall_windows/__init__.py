@@ -98,6 +98,13 @@ user's word, through PowerShell's NetSecurity cmdlets (the library's machines.wi
   person's signed in at the platform's page; each acceptance of a licence is kept in that person's own login store,
   never in a file. IPinfo Lite, for networks, is named and not offered (the user, 2026-11-25: each source offered only
   after their yes): its row waits for your word, with no button, no card and no key asked (apis.GEOIP_SOURCES).
+- The World Wide Web tab leaves (0.11.0, liminal-libs 1.105.0, Monday list item 33; the user, 2026-11-26: "Delete
+  now"): the tab, its GeoIP sources and files, its globe's filters, layers, data sets and sky, and their cards are
+  plugin-platform-worldwideweb's, which asks this plugin through the platform for what only a firewall knows (the
+  socket table's reading, the hosts recorded, the routes kept, the rules covering a port: rules_covering, answered in
+  Windows' own terms). This plugin keeps its rules, the Netstat tab, the hosts' recording and database and the
+  Networks tab; what the bullets above and below say of the World Wide Web tab is what it had until 0.10.0. It needs
+  liminal-libs 1.105.0.
 - The globe's newer data sets (0.10.0, liminal-libs 1.104.0; the Monday list's items 24, 27, 28, 29 and 32, with the
   user's answers of 2026-11-26): AfTerFibre's fibre on land in Africa (its map's tiles; its licence unconfirmed),
   Natural Earth's 1:10m roads, North America's roads and railways as stand-ins for fibre where none is mapped (public
@@ -125,26 +132,17 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from liminal_libs import geo
 from liminal_libs.machines.firewall import GROUP, NAME, Firewall, FirewallError, Rule
 from liminal_libs.machines.plugin import CommandError
 from liminal_libs.machines.rulegroups import Sorted, key_of
 from liminal_libs.machines.windows import PowerShell, is_elevated, quote
-from liminal_libs.machines.world import WorldView, size_words
+from liminal_libs.machines.world import size_words
 
-from .apis import (APIS, CITY_LITE, CITY_LITE_LICENCE, DBIP, DBIP_CREDIT, DEFENDER_API, EMODNET, NAME_SERVERS,
-                   NETCONNECTION, NETSECURITY, NETSTAT, NPCAP, OVERPASS_API, SOCKETS, TOPOLOGY_ZOO, WIKIDATA)
-from .apis import GEONAMES_API, OURAIRPORTS_API
-from .apis import AFTERFIBRE_API, CELESTRAK_API, NATURAL_EARTH_API, RIPE_ATLAS, SGP4_PACKAGE, TOPOHUB_API
-from .apis import GOOGLE, OPENDNS
-from .apis import ASN_LITE, ASN_LITE_LICENCE
-from .apis import GEOIP_SOURCES as SOURCES
-from .apis import INFRASTRUCTURE as DATA_SETS
-from .apis import RDAP_BOOTSTRAP as RDAP_FILES
+from .apis import APIS, DEFENDER_API, NETCONNECTION, NETSECURITY, SOCKETS
 from .network import EXCLUDED, WindowsNetwork
 from liminal_libs.machines.segments import NetworkHost
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 DIRECTIONS = {"in": "Inbound", "out": "Outbound"}
 ACTIONS = {"allow": "Allow", "block": "Block"}
 PROTOCOLS = {"tcp": "TCP", "udp": "UDP", "any": "Any"}
@@ -177,44 +175,11 @@ PRESETS = {  # the rules shown: (title, which); those turned off too (0.4.0: "al
 DEFAULTS = {"inbound": "block", "outbound": "allow"}  # what Windows does where a profile's default is NotConfigured
 UAC = "Windows asks for an administrator's permission first (UAC)."
 SYSTEMS = {"linux": "Linux", "darwin": "macOS"}  # a system that is not Windows, by the name Python gives it, in words
-DATA_SET_CARDS = {"overpass": OVERPASS_API.name, "sparql": WIKIDATA.name, "geojson": EMODNET.name,  # by a set's format
-                  "gml": TOPOLOGY_ZOO.name, "ourairports": OURAIRPORTS_API.name, "geonames": GEONAMES_API.name,
-                  # liminal-libs 1.104.0: the fibre, roads and railways, backbones, RIPE Atlas and the orbits
-                  "shapefile": NATURAL_EARTH_API.name, "mvt": AFTERFIBRE_API.name, "topohub": TOPOHUB_API.name,
-                  "atlas-probes": RIPE_ATLAS.name, "atlas-latest": RIPE_ATLAS.name, "omm-csv": CELESTRAK_API.name}
 
 
 def _platform() -> str:
     """The system the platform runs on, as Python names it (sys.platform): win32 on Windows. A test stands in for it."""
     return sys.platform
-
-
-def netstat_in(base=Firewall) -> bool:
-    """Whether the library's Firewall base has the Netstat tab, the hosts database and the globe's layers (liminal-libs
-    1.65.0: its netstat_view); an older one has the World Wide Web tab alone (0.7.0)."""
-    return callable(getattr(base, "netstat_view", None))
-
-
-def world_in(base=Firewall) -> bool:
-    """Whether the library's Firewall base still has the World Wide Web tab (0.10.0): from liminal-libs 1.105.0 it is
-    plugin-platform-worldwideweb's, and the base has no `world`."""
-    return callable(getattr(base, "world", None))
-
-
-# 0.10.0: the cards of the World Wide Web tab's reaches, plugin-platform-worldwideweb's from liminal-libs 1.105.0 (its
-# apis.py holds them, moved word for word); kept here one release for an older library, deleted in the release after
-WORLD_CARDS = (NPCAP, DBIP, OPENDNS, GOOGLE, OVERPASS_API, WIKIDATA, EMODNET, TOPOLOGY_ZOO, OURAIRPORTS_API,
-               GEONAMES_API)
-
-
-def cards_for(base=Firewall) -> tuple:
-    """The cards of what the plugin attaches to, with the library it runs with (0.7.0): every one of APIS where the
-    Firewall base has the Netstat tab (netstat_in), else 0.6.1's, the socket tables' and the data sets' cards left out:
-    the plugin reaches none of them there. 0.10.0: with a base that no longer has the World Wide Web tab (liminal-libs
-    1.105.0, world_in), the tab's cards are left out too: plugin-platform-worldwideweb draws them."""
-    if not netstat_in(base):
-        return tuple(a for a in APIS if a not in NETSTAT)
-    return APIS if world_in(base) else tuple(a for a in APIS if a not in WORLD_CARDS)
 
 
 def _ports(text) -> tuple[int, ...]:
@@ -450,22 +415,21 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
     SECTION = "os"  # drawn under the platform's OS plugins (liminal-platform 0.26.0)
     title = "Windows Firewall"
     about = ("Windows Defender Firewall, the networks and Microsoft Defender on this PC: every rule and profile read, "
-             "queried and changed on your word (an administrator's, through UAC)"
-             + (("; its Netstat, the hosts each program talks with, and the internet's infrastructure on its globe"
-                 if world_in() else "; its Netstat and the hosts each program talks with") if netstat_in() else ""))
+             "queried and changed on your word (an administrator's, through UAC); its Netstat and the hosts each "
+             "program talks with")
     api = "2.2"
     # what it attaches to: PowerShell and UAC, NetSecurity, NetConnection, Defender, the COM policy, what names a rule,
-    # the World Wide Web tab's (apis.py); and, with liminal-libs 1.65.0 (0.7.0), the socket tables and the data sets'
-    # sources of the Netstat tab and the globe's layers (cards_for)
-    apis = cards_for()
+    # the socket tables (0.7.0) and the services' networks' NetTCPIP and netsh (0.8.0); 0.11.0: the World Wide Web
+    # tab's are plugin-platform-worldwideweb's (apis.py)
+    apis = APIS
     order = 710
-    # the base's hooks include world and world_geoip, the World Wide Web tab's page and its GeoIP file's install (0.6.0),
-    # which the platform runs as a job (the base's JOB_HOOKS, kept: the plugin runs no job of its own)
+    # the base's: its rules, the Netstat tab, the hosts' recording and the services the World Wide Web plugin asks
+    # (liminal-libs 1.105.0); 0.11.0: none of the World Wide Web tab's, which is plugin-platform-worldwideweb's
     HOOKS = tuple(dict.fromkeys((*Firewall.HOOKS, "refresh", "find_rules", "show_rules", "set_rule", "remove_rule",
                                  "make_rule", "set_profile", "set_network",
                                  *NetworkHost.HOOKS, EXCLUDED)))  # 0.8.0: services' networks (network.py)
-    # 0.8.0: the Networks tab after the World Wide Web and Netstat tabs; 0.10.0: after the Netstat tab alone with
-    # liminal-libs 1.105.0, whose Firewall base left the World Wide Web tab to plugin-platform-worldwideweb
+    # 0.8.0: the Networks tab after the World Wide Web and Netstat tabs; 0.11.0: after the Netstat tab alone (liminal-libs
+    # 1.105.0, whose Firewall base left the World Wide Web tab to plugin-platform-worldwideweb)
     TABS = (*Firewall.TABS, *NetworkHost.TABS)
     ASKS = (*getattr(Firewall, "ASKS", ()), *NetworkHost.ASKS)
     # 0.8.0: Windows' excluded port ranges, read by anyone (the container plugins), beside both bases' reads
@@ -481,36 +445,10 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
     PAGE_ONLY_HOOKS = (*NetworkHost.PAGE_ONLY_HOOKS,
                        "set_rule", "remove_rule", "make_rule", "set_profile", "set_network", "allow", "remove",
                        # 0.8.0 (service-containers-networking §8.1): the base's other changes too, its labels and moves,
-                       # the hosts' recording and forgetting, the traffic's watching, the downloads; NetworkHost's own
-                       # (approve_plan, the grants, the domain, Re-point…, Withdraw…) add up from its class
-                       "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget",
-                       # (0.10.0: those of the World Wide Web tab only where the base still has it, an older library;
-                       # the sgp4 package's download and removal, code the plugin then imports, among them)
-                       *(h for h in ("world_watching", "world_geoip", "world_asn", "world_layer_get",
-                                     "world_layer_remove", "world_sky_get", "world_sky_remove") if h in Firewall.HOOKS))
-    # -- the World Wide Web tab (0.6.0): its tab (TABS), its hooks and its setting (keys: LIMINAL_HOME_PLACE, home on the
-    # globe) are the Firewall base's; what it reaches is named here (apis.py), since the library names no outside host.
-    # 0.10.0: with liminal-libs 1.105.0 the tab is plugin-platform-worldwideweb's and the base reads none of these; they
-    # are kept one release for an older library
-    GEOIP_URL = CITY_LITE  # DB-IP's IP to City Lite, this month's file (last month's while this month's is not out yet)
-    RDAP_BOOTSTRAP = RDAP_FILES  # liminal-libs 1.72.1: the routers' networks are looked up from these
-    GEOIP_LICENCE = CITY_LITE_LICENCE  # CC BY 4.0 in plain words, and the download's size: shown before it is accepted
-    # liminal-libs 1.75.0: DB-IP's IP to ASN Lite beside it, each network's AS number and operator (an older library
-    # offers neither)
-    GEOIP_ASN_URL = ASN_LITE
-    GEOIP_ASN_LICENCE = ASN_LITE_LICENCE
-    ATTRIBUTION = DBIP_CREDIT  # "IP Geolocation by DB-IP", linked, wherever its places are
-    # 0.9.0 (liminal-libs 1.101.0): the GeoIP sources (apis.py), places and networks chosen apart, DB-IP's the default
-    # for both; their download, use and removal the base's three page-only hooks. IPinfo Lite is named, not offered.
-    GEOIP_SOURCES = SOURCES
-    PUBLIC_DNS = NAME_SERVERS  # OpenDNS's and Google's, asked for this network's public address: home, when you set none
-    # -- the Netstat tab, the hosts database and the globe's filters and layers (0.7.0): the Firewall base's
-    # (liminal-libs 1.65.0); what the layers are downloaded from is named here (apis.py's INFRASTRUCTURE:
-    # OpenStreetMap's through the Overpass API, Wikidata's, EMODnet's, the Internet Topology Zoo's), each a data set the
-    # user downloads on the World Wide Web tab
-    INFRASTRUCTURE = DATA_SETS
-    # 0.10.0 (liminal-libs 1.104.0): the sgp4 package the satellites are placed with, offered beside the data sets
-    SKY_PACKAGE = SGP4_PACKAGE
+                       # the hosts' recording and forgetting; NetworkHost's own (approve_plan, the grants, the domain,
+                       # Re-point…, Withdraw…) add up from its class. 0.11.0: the World Wide Web tab's (the watching,
+                       # the downloads) are plugin-platform-worldwideweb's
+                       "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget")
 
     def __init__(self, powershell: PowerShell | None = None, elevated=None, clock=time.time, system: str | None = None,
                  book=None, platform: str = ""):
@@ -604,10 +542,9 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
     def api_facts(self) -> dict:
         """What the last read found of its APIs, asking nothing (a read under way is not waited for): when it was and how
         long it took, the rules and profiles (NetSecurity), the networks (NetConnection), Defender's state; why the last
-        read failed, if it did. And, once the World Wide Web tab was asked since the plugin was attached (0.6.0), whether
-        it watches through Npcap and the GeoIP file it places with (_world_facts); once its Netstat view is made
-        (0.7.0), the socket tables' last reading, the hosts' recording and database, and the globe's data sets
-        (_netstat_facts)."""
+        read failed, if it did. And, once its Netstat view is made (0.7.0), the socket tables' last reading, the hosts'
+        recording and database (_netstat_facts). 0.11.0: what the World Wide Web tab reaches is plugin-platform-
+        worldwideweb's to say."""
         with self._rt.lock:
             snap, error = self._rt.snap, self._rt.error
         out: dict[str, dict[str, str]] = {}
@@ -623,14 +560,13 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
             out[DEFENDER_API.name] = {"State": self._defender_words(snap)}
         if error:
             out.setdefault(NETSECURITY.name, {})["Last read failed"] = error
-        out.update(self._world_facts())
         out.update(self._netstat_facts())
         return out
 
     def rules_covering(self, port, proto="tcp") -> list[dict]:
         """The rules covering a port, for the World Wide Web tab's port picked (a read another plugin asks).
 
-        0.10.0, liminal-libs 1.105.0's service, in Windows' own terms: every rule of the last read whose local ports name
+        0.11.0, liminal-libs 1.105.0's service, in Windows' own terms: every rule of the last read whose local ports name
         the port, a range holding it or every port, of its protocol or of any, those naming it first; each with its
         program, its service and its group as Windows holds them. From the read kept, waiting on none under way."""
         if isinstance(port, bool) or not isinstance(port, int) or not 0 < port < 65536:
@@ -651,51 +587,12 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
                  "owned": r.owned, "group": r.group, "why": why[r.cover_rank(port)], "program": r.program,
                  "service": r.service} for r in found[:200]]
 
-    def _world_facts(self) -> dict[str, dict[str, str]]:
-        """What the World Wide Web tab knows of what it reaches (WorldView.describe), asking nothing and starting nothing:
-        whether it watches through Npcap, at which adapter, or why it cannot; the packets it read; the GeoIP file it places
-        with (DB-IP's), and whether it is open now (it is let go while nobody watches). Nothing before the tab was first
-        asked since the plugin was attached: no view is made for this (the base's world_view(make=False))."""
-        view = self.world_view(make=False)  # the Firewall base's view: made at the tab's first ask, forgotten on detach
-        if not isinstance(view, WorldView):
-            return {}
-        d = view.describe()
-        w = d.get("watching") or {}
-        error = d.get("error") or w.get("error") or ""
-        while_shown = f"while the World Wide Web tab is shown and for {view.timeout:g} s after"
-        if w.get("running"):
-            at = f", at the adapter of {d['address']}" if d.get("address") else ""
-            since = f" since {when(w['started'])}" if w.get("started") else ""
-            watching = f"yes{at}{since}, {while_shown}"
-        elif error:
-            watching = f"no: {error}"
-        else:
-            watching = f"no: only {while_shown}" + (f" (last until {when(w['stopped'])})" if w.get("stopped") else "")
-        npcap = {"Watching": watching, "Packets read": f"{int(w.get('packets') or 0):,} in all: counted, none kept"}
-        geoip = d.get("geoip")
-        if geoip:
-            built = ", ".join(x for x in ((f"built {geoip['date']}" if geoip.get("date") else ""),
-                                          (size_words(geoip["size"]) if geoip.get("size") else "")) if x)
-            file = str(geoip.get("file") or "") + (f", {built}" if built else "") + ": looked up on this PC" + (
-                "" if geoip.get("open", True) else " (let go while the tab is not watched; opened again at its next ask)")
-        else:
-            readable, why = geo.available()
-            # 0.6.1: a data folder on another system's drive (liminal-libs 1.58.0's WorldView.elsewhere: a share, a network
-            # drive) holds that system's file, which the tab never reads, nor offers to install there
-            elsewhere = getattr(view, "elsewhere", None)
-            away = elsewhere() if callable(elsewhere) else ""
-            file = (f"none read here: {away}" if away
-                    else "none installed yet: the World Wide Web tab's Install the GeoIP file… downloads one once you accept "
-                         "its licence" if readable else f"none can be read here: {why}")
-        return {NPCAP.name: npcap, DBIP.name: {"GeoIP file": file}}
-
     def _netstat_facts(self) -> dict[str, dict[str, str]]:
-        """What the Netstat tab, the hosts database and the globe's layers know of what they reach (0.7.0), asking
-        nothing and starting nothing (the base's NetstatView.describe): the socket tables' last reading (when, how many
-        sockets, how long it took), how the hosts are recorded and what the hosts database holds, under the socket
-        tables' card; each data set of the globe, downloaded or not, under its source's card. Nothing with a library
-        before 1.65.0 (it has no such view), nor before the plugin made its view (at its attach on this PC, or a tab's
-        first ask): none is made for this (the base's netstat_view(make=False))."""
+        """What the Netstat tab and the hosts database know of what they reach (0.7.0), asking nothing and starting
+        nothing (the base's NetstatView.describe): the socket tables' last reading (when, how many sockets, how long it
+        took), how the hosts are recorded and what the hosts database holds, under the socket tables' card. Nothing
+        before the plugin made its view (at its attach on this PC, or a tab's first ask): none is made for this (the
+        base's netstat_view(make=False)). 0.11.0: the globe's data sets are plugin-platform-worldwideweb's."""
         made = getattr(self, "netstat_view", None)
         view = made(make=False) if callable(made) else None
         describe = getattr(view, "describe", None)
@@ -737,12 +634,7 @@ class WindowsFirewallPlugin(Firewall, WindowsNetwork):
         sockets_facts = {"Last reading": last, "Recording": recording, "Hosts database": kept}
         if d.get("error"):
             sockets_facts["Problem"] = str(d["error"])
-        out: dict[str, dict[str, str]] = {SOCKETS.name: sockets_facts}
-        for s in d.get("sets") or ():
-            card = DATA_SET_CARDS.get(str(s.get("format") or ""))
-            if card is not None:
-                out.setdefault(card, {})[str(s.get("title") or s.get("id") or "a data set")] = _data_set_words(s)
-        return out
+        return {SOCKETS.name: sockets_facts}
 
     def refresh(self) -> dict:
         """The configuration read again now (the page's Refresh)."""
@@ -1671,21 +1563,6 @@ def ports_said(r: WinRule) -> str:
 def plural(n: int, word: str) -> str:
     """A count and its word, thousands written as the library's tabs write them (0.7.0): 1 rule, 1,204 hosts."""
     return f"{n:,} {word}{'' if n == 1 else 's'}"
-
-
-def _data_set_words(s: dict) -> str:
-    """A data set of the globe as its card's fact says it (Index.sets' entry, 0.7.0): being downloaded, its file that
-    does not read, what is installed of it, or that it is not downloaded yet."""
-    if s.get("downloading"):
-        return "being downloaded now (its progress is in the plugin's panel)"
-    if s.get("problem"):
-        return str(s["problem"])
-    if s.get("installed"):
-        dropped = int(s.get("dropped") or 0)
-        return (f"{plural(int(s.get('features') or 0), 'feature')}, fetched {str(s.get('fetched') or '')[:10]} "
-                f"({size_words(int(s.get('bytes') or 0))})" + (f"; {dropped:,} left out" if dropped else ""))
-    return ("not downloaded: the World Wide Web tab's Internet infrastructure table offers it, its size and licence "
-            "said first")
 
 
 @dataclass

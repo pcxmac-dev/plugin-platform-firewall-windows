@@ -1,16 +1,14 @@
 # plugin-platform-firewall-windows
 
 Windows Firewall for Liminal: Windows Defender Firewall, the networks and Microsoft Defender on this PC, every rule and
-profile read, queried and changed on your word; and, on its World Wide Web tab, the traffic coming in and going out on a
-globe, with the ports' traffic. Since 0.7.0 its Netstat tab lists the listening ports and the open connections with the
-program behind each, the hosts each program talks with are recorded on this PC, and the globe shows them, filtered,
-over the internet's infrastructure.
+profile read, queried and changed on your word. Since 0.7.0 its Netstat tab lists the listening ports and the open
+connections with the program behind each, and the hosts each program talks with are recorded on this PC; since 0.8.0
+its Networks tab routes and names the container plugins' segments.
 
-**0.10.0:** with liminal-libs 1.105.0 the World Wide Web tab is a plugin of its own, plugin-platform-worldwideweb
-(Monday list item 33), which asks this plugin through the platform for what only a firewall knows: the socket table's
-reading, the hosts recorded, the routes kept, the rules covering a port. This plugin keeps its rules, its Netstat tab
-and the hosts' recording; the tab's place column comes from that plugin's GeoIP file (`places`). On a library before
-1.105.0 the tab below is this plugin's as in 0.9.0, for one release more.
+**0.11.0:** the World Wide Web tab (the globe, the traffic watched, the GeoIP files, the internet's infrastructure and
+the satellites) is a plugin of its own, plugin-platform-worldwideweb (Monday list item 33), and nothing of it is left
+here: its cards, data sets, hooks and tests went with it (the user, 2026-11-26: "Delete now"). That plugin asks this
+one through the platform for what only a firewall knows (below). Floor: liminal-libs 1.105.0.
 
 The user's words: "the platform is the interface for the software/hardware which facilitates the liminal framework";
 "i also need a windows and linux firewall plugin for the platform" (2026-11-07); "windows firewall, i need it to be
@@ -103,58 +101,20 @@ one over HTTP. Before, any program on this PC could ask a change itself, its sec
 framework's pages, 8765, 8775, 8785, 8795; a finding, never a change) and `rules` (the ports the framework's services
 need, opened as `Liminal: <name>`). `allow`/`remove` make and remove Liminal's own rules.
 
-## The World Wide Web tab
+## What the World Wide Web plugin asks of it
 
-(With liminal-libs 1.105.0, plugin-platform-worldwideweb's: what follows is the tab as this plugin has it on an older
-library, and as that plugin has it now.)
+plugin-platform-worldwideweb draws the globe; this plugin answers it through the platform, with the library's Firewall
+base's services (liminal-libs 1.105.0), only another plugin asking the changes:
 
-Since 0.6.0 the plugin's page has a tab after Main and its API tabs, **World Wide Web**: the library's Firewall base's
-tab (liminal-libs 1.55.0, `machines/world.py`), which liminal-platform 0.27.0 asks every 2 s while it is shown. The
-plugin names what it reaches (`apis.py`); the library names no outside host.
+- `netstat_seen`: the socket tables' last reading, the Netstat tab's own (one reading serves both for 2.5 s).
+- `hosts_found` and `hosts_routes`: the hosts recorded in the hosts database, and the routes traced to them that it
+  keeps; `hosts_keep_route` keeps a route traced, `hosts_keep_places` and `hosts_clear_places` the places looked up in
+  that plugin's GeoIP file (the Netstat tab's place column; with that plugin not attached the note says why).
+- `rules_covering`, in Windows' own terms: the rules of the last read covering a port (named, in a range holding it,
+  or every port), of its protocol or of any, with each rule's id, program, service and group, those naming the port
+  first; from the read kept, waiting on none.
 
-- **Watching runs only while you look.** While the tab is shown, and for 20 s after its last ask, every TCP and UDP
-  packet at the adapter of this PC's way out is read through [Npcap](https://npcap.com/), its headers alone, and
-  counted by port and by network. Watching stops by itself after that, and when the plugin is detached; no packet is
-  kept, only counts, in memory. Npcap is installed on this PC without "Restrict Npcap driver's access to Administrators
-  only" (AdminOnly=0), so watching needs no administrator and no UAC. Installed for administrators only, Npcap has its
-  NpcapHelper ask for elevation (a UAC prompt) as soon as a process that is no administrator lists or opens an
-  adapter, so the library reads that option from the registry first (read access alone) and a platform that is no
-  administrator asks Npcap nothing: the tab says to install Npcap again with the option unticked, or to run the
-  platform as an administrator. Where watching cannot run, the tab says why and how to put it right, tries again 15 s
-  later at the soonest, and never asks for an administrator or a password.
-- **The globe** places each public network (an IPv4 /24, an IPv6 /48) traffic came from or went to, by its kind:
-  allowed in, unanswered in (nothing came back within 3 s: a scan, or a port the firewall drops) and out, with its route
-  to home. The local network's peers are summed apart and never placed. At most 300 places are drawn, the rest summed.
-- **Places come from a file on this PC**: DB-IP's [IP to City Lite](https://db-ip.com/db/download/ip-to-city-lite),
-  under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). No peer's address is sent anywhere, and none is
-  looked up by name. The file is downloaded only from the tab's **Install the GeoIP file…**: the first confirmation
-  says what is downloaded, from where and to where, and shows the licence; the second one accepts it. It is about 60 MB
-  (121 MB unpacked), this month's file, or last month's while this month's is not out yet, kept as one copy in the
-  data folder's `geoip/`. The platform runs the install as a job (the library's `JOB_HOOKS`), its progress, the bytes
-  so far and their percent, followed in the plugin's panel. It stops by itself after 30 minutes, the download
-  included, and when the plugin is detached; every hop is https, from download.db-ip.com alone. A month's file is never
-  downloaded twice: **Update…** is offered once the file installed is an earlier month's, and fetches this month's in
-  its place. The file is open while the tab is watched, and let go once watching stops. Wherever its places are shown,
-  the page says "IP Geolocation by DB-IP" with a link to db-ip.com, as the licence asks. The second confirmation comes
-  from liminal-platform 0.28.0 or newer, which carries the licence's refusal back to the page; 0.27.0 shows the
-  refusal in the job's panel instead.
-- **GeoIP sources** (0.9.0, liminal-libs 1.101.0): the tab's **GeoIP sources** table takes the place of Install the
-  GeoIP file… and Install the ASN file…: a row a source's file (Source, Gives, Licence, Key, Here), with **Use…**,
-  **Download…** (**Update…** once one is due) and **Remove…**. Places and networks are chosen apart; DB-IP's two files
-  are the default for both, at the same addresses, in the same folders and in the same words. Download…, Use… and
-  Remove… are asked only by you, signed in at the platform's page (each hook refuses any other ask itself), and
-  Remove… is asked twice. Your acceptance of a licence is kept in your own login store (`licence-dbip-lite`,
-  `licence-dbip-asn-lite`), never in a file. **IPinfo Lite** ([its page](https://ipinfo.io/lite), CC BY-SA 4.0,
-  credited "IP address data powered by IPinfo") is named for networks and not offered yet: its row says "not offered:
-  waiting for your word", with no button and no key asked, until you say yes.
-- **Home** is the place you set in the plugin's settings, **Home on the globe** (`LIMINAL_HOME_PLACE`,
-  `lat,lon[,label]`, as `48.86,2.35,Paris`; kept through the platform's login). Without one, home is where the file puts
-  this network's public address, asked once of OpenDNS's name servers, then Google's (the hw-stats plugin's), with
-  nslookup, windowless. Only that question goes out, its name absolute (`myip.opendns.com.`), so none of this PC's DNS
-  search suffixes is sent with it; Windows' nslookup first asks the server for its own name (the PTR record of the
-  server's own address).
-- **The ports**: the four busiest ports here are charted (bytes a second in and out, over the last ten minutes), and
-  tabled with the places and the ports elsewhere (the far end's ports of the connections this PC started).
+Off Windows each refuses in words, reading nothing.
 
 ## The Netstat tab
 
@@ -163,7 +123,7 @@ what apps they are attached to, and the hosts that they connect to across the la
 have a globe that can be zoomed and rotated and geoip'd hosts are databased for the apps they talk to, the time they
 are connected to *this *computer".
 
-Since 0.7.0 the page has a **Netstat** tab after World Wide Web: the library's Firewall base's (liminal-libs 1.65.0,
+Since 0.7.0 the page has a **Netstat** tab: the library's Firewall base's (liminal-libs 1.65.0,
 `sockets.py` and `machines/netstat.py`), asked every 3 s while it is shown.
 
 - **Connections**: every open connection, with the program that holds it (its name, pid, and the service where one
@@ -185,13 +145,11 @@ Since 0.7.0 the page has a **Netstat** tab after World Wide Web: the library's F
   shorter than the gap between two readings can be missed; and a program run by an interpreter shows as the
   interpreter (Liminal's own four apps show as python.exe, or as pythonw.exe where they were started at logon or at
   boot).
-- One reading of the tables serves both tabs for 2.5 s.
+- One reading of the tables serves the tab and the World Wide Web plugin's asks for 2.5 s.
 
 Off Windows the plugin is not for the machine at all: its status says so, its tabs say the same, and every other ask
-of theirs (a filter of the globe, the recording, Forget…, a layer, a data set's download or removal) is refused in
-words before it reads, records, keeps or removes anything: the hosts database and the layers there are that system's
-own firewall plugin's. On a library before 1.65.0 the plugin loads as 0.6.1 did, its World Wide Web tab as it was, and
-names none of this.
+of theirs (the recording, Forget…, and each service the World Wide Web plugin asks) is refused in words before it
+reads, records, keeps or removes anything: the hosts database there is that system's own firewall plugin's.
 
 ## The hosts database
 
@@ -203,88 +161,10 @@ names none of this.
 - **Where**: one small SQLite file on this PC's own disk, the data folder's `hosts/hosts.db`; at most 50,000 rows, the
   hosts longest unseen pruned first (about 13 MB with ordinary values). A data folder on another system's drive is that
   system's: nothing is kept there from here. Nothing in it is sent anywhere.
-- **When it records**: only while this plugin's Netstat or World Wide Web tab is shown (the default), or all the time
+- **When it records**: only while this plugin's Netstat tab or the World Wide Web plugin's tab is shown (the default), or all the time
   the platform runs (a reading every 5 s), as you choose with **Recording…** or the plugin's setting **Recording
   hosts** (`LIMINAL_HOSTS_RECORDING`: `shown` or `always`), kept through the platform's login. **Forget…** removes every
   row, asked twice.
-
-## Internet infrastructure on the globe
-
-The user's words (2026-11-16): "the globe-firewall should allow filtering, so i can view apps connected to hosts all
-across the globe, or ports talking to all hosts. The globe should have the same kind of geography associated with the
-exchanges globe, but the firewall globe should instead of exchanges, have all the backbones,ibones, major internet
-infrastructure, (as many as possible) datacenter locations." And (2026-11-19): "also on the firewall theres no real
-ibone or major hub s drawn on the map, data centers in the world (dataset) and major network 'bones' need to be
-displayed on the map"; "also underwater lines".
-
-- **What the globe shows**, the table right under it: the traffic watched now, or the hosts recorded; those filtered
-  by program (its hosts across the globe), by port (every host on it), by direction (in or out) and by when they were
-  last seen (within the last hour, day, 7 days or 30 days; their totals are all the time recorded). The eight programs
-  and the eight ports with the most hosts are offered right under the globe, the rest in the Programs and Ports tables
-  below it, beside a Hosts table.
-- **The layers**: where the charts' exchanges globe draws exchanges, this globe draws the internet's infrastructure:
-  data centres, internet exchange points, cable landing stations, ground stations and teleports, backbones and their
-  points of presence, submarine cables, and telecom lines on land. "The same kind of geography" is read as the
-  exchanges globe's marks, clusters and name boxes, on this globe's filled land, its equator stressed; day and night
-  and the sun's mark are left out of this version. "ibones" is read as internet backbones: the Internet Topology Zoo's
-  261 maps of networks (research networks such as GÉANT, Internet2 and ESnet, carriers such as Sprint, NTT and Cogent),
-  each network's newest map drawn as links between its cities, about 2010-2011 and logical, not today's fibre routes
-  (no free map of those exists: operators keep them private or sell them); OpenStreetMap's telecom lines on land
-  (partial: no country is complete); and the submarine cables. Each layer is switched on and off in the globe's
-  legend, remembered in this browser. The
-  layers are drawn by liminal-platform 0.33.0 and later, whose page gives the globe its way to ask for them; an older
-  platform's globe says that it cannot load them, and everything else works.
-- **The data sets**, in the World Wide Web tab's **Internet infrastructure** table, each downloaded only on your word
-  (**Download…**, **Update…**; **Remove…** takes it away), as a job (its progress in the plugin's panel; **Cancel**
-  stops it; ten minutes at most), its size (an estimate where its maker gives none) and its licence said first and
-  accepted in a second confirmation; then kept on this PC (the data folder's `infrastructure/`) and drawn from there,
-  so the globe asks nothing of anyone. Each is credited on the globe as its licence asks.
-
-| Data set | From | Licence | Size (an estimate) |
-| --- | --- | --- | --- |
-| Data centres, and the exchange points mapped | OpenStreetMap, through the public Overpass API | ODbL 1.0 | 2 MB |
-| Submarine cables and landing stations | OpenStreetMap, through the public Overpass API | ODbL 1.0 | 3 MB |
-| Telecom lines on land (partial) | OpenStreetMap, through the public Overpass API | ODbL 1.0 | 15 MB |
-| Exchange points, ground stations and teleports | Wikidata, through its query service | CC0 | 0.2 MB |
-| Telecom cable routes in European waters | EMODnet Human Activities, through its WFS | CC BY 4.0 | 4 MB |
-| Backbone networks, about 2010-2011 | the Internet Topology Zoo, through GitHub | CC BY 4.0 | 0.35 MB (its own) |
-
-- **One request a data set**: its query asks for the tags or the kinds of place it draws and nothing more, nothing about
-  this PC or its traffic, with the plugin's name and version as its User-Agent and no contact (Wikidata's policy asks
-  automated clients to name one: a refusal for want of it is said in words). The public Overpass server asks apps not
-  to lean on it: it is asked once a data set, on your click, and once more a minute later when it is busy.
-- **The submarine cables** are asked of every telecom category OpenStreetMap's mappers use (fibre_optic, fiber_optic,
-  optical, telephone, telegraph, telefon, communication, telephone/fibre_optic: 1,189 ways, where fibre_optic and
-  telephone alone were 1,115), as the Linux firewall plugin asks them; no power cable. The **lines on land** leave out
-  those on power poles (power=minor_line: local distribution, 6,394 of 15,775), which leaves the lines most like
-  backbones. **Wikidata's data centres** are asked with their kinds (colocation centres among them: 211 items, not 168).
-- **EMODnet's cable routes** are a fifth data set because its WFS offers GeoJSON: the actual routes in European waters
-  (and French cables beyond) as six national sources gave them, asked longitude first (`srsName=EPSG:4326`).
-- **The Topology Zoo's maps** are a sixth: one archive of GML maps, unpacked in memory alone (32 MB at most, 2,000
-  files, 4 MB a map), of each network its newest map from 2000 on, its own points of presence with a place and the
-  links between them, each drawn as the great circle between its two ends. Its credit names its makers: "Internet
-  Topology Zoo (Knight, Nguyen, Falkner, Bowden, Roughan, IEEE JSAC 2011), Adelaide University, CC BY 4.0".
-- **The globe's newer data sets** (0.10.0, liminal-libs 1.104.0), in the same table, each downloaded only on your click,
-  its size and its licence said first: **Africa's terrestrial fibre** (AfTerFibre, NSRC, its licence unconfirmed: CC BY
-  4.0 as records elsewhere say; its map's 56 tiles, one after another; its contributors' names and addresses are never
-  kept; about 3 MB), **Major roads**, **North America's roads** and **Railways** (Natural Earth, 1:10m, public domain;
-  8.7, 45.6 and 14.4 MB, the North America file's limit raised for it alone), drawn dashed as a stand-in for fibre where
-  none is mapped, **The world's backbones, a model** (TopoHub, its repository MIT, no licence stated for its data; 1.0
-  MB; its cities a layer of their own), **RIPE Atlas probes and anchors** and **its probes' newest traceroutes**, IPv4
-  and IPv6 (RIPE Atlas's terms 3.5: non-commercial use; 2 MB, about 50 MB and about 25 MB, their limits raised for them
-  alone), and **Starlink's**, **OneWeb's** and **HughesNet's** orbits (CelesTrak, no licence stated; after your first
-  download fetched again by themselves every 2 hours at the soonest while the World Wide Web tab is open, never while it
-  is closed, as its usage policy allows). The satellites are placed with the **sgp4 package** (MIT, the wheel for this
-  machine), offered beside them with its size and sha256 and kept in the data folder's `packages/`: until it is
-  downloaded the sky says it needs it. Each constellation is its own colour, its footprints (25 degrees of elevation)
-  one merged area; a geostationary satellite's, its full cap. Since this release what you download is kept in the data
-  folder's `infrastructure/infrastructure.db`, read by area as the globe comes nearer.
-- **Left out, and why**: PeeringDB and the IXP Database (for operational use alone), Packet Clearing House's
-  directory and the ITU's map (non-commercial terms), TeleGeography (its data is sold), root server sites (no licence
-  stated), cloud regions (no coordinates, and only one provider's page may be copied) and content networks' city lists
-  (their sites' terms). Free, but not here yet: Wikipedia's list of exchange points (544 active, CC BY-SA 4.0, placed
-  only at their cities, whose places take a second request) and NOAA's cables in US waters (CC0, two requests): a
-  data set here is one request.
 
 ## From the command line
 
@@ -335,24 +215,7 @@ the API's other notable calls beside them.
 - **Windows' names** for a rule's service, app and program: Get-Service, [Get-AppxPackage](https://learn.microsoft.com/en-us/powershell/module/appx/get-appxpackage?view=windowsserver2025-ps),
   [FileVersionInfo](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.fileversioninfo.getversioninfo?view=netframework-4.8.1).
 
-Since 0.6.0, four more for the World Wide Web tab:
-
-- **Npcap**, the packet capture the library calls through wpcap.dll: [Npcap](https://npcap.com/),
-  [its users' guide](https://npcap.com/guide/npcap-users-guide.html), [where its install options are kept, AdminOnly
-  among them](https://npcap.com/guide/npcap-devguide.html), [its API](https://npcap.com/guide/wpcap/pcap.html),
-  [pcap-filter(7)](https://www.tcpdump.org/manpages/pcap-filter.7.html). Its card names every libpcap call the
-  library's capture makes, and the AdminOnly option it reads before them. Npcap's free license covers five computers.
-  Copies installed and used only with Nmap, Wireshark or Microsoft Defender for Identity do not count, but this PC's
-  does: it came with Wireshark, and Liminal uses it directly. More computers, or redistributing it, need Npcap OEM.
-- **DB-IP IP to City Lite**, the GeoIP file: [the Lite databases and their licence](https://db-ip.com/db/lite.php),
-  [IP to City Lite](https://db-ip.com/db/download/ip-to-city-lite), [its MMDB format](https://db-ip.com/db/format/ip-to-city-lite/mmdb.html),
-  [the MaxMind DB format](https://maxmind.github.io/MaxMind-DB/) and [maxminddb](https://github.com/maxmind/MaxMind-DB-Reader-python),
-  which reads it.
-- **OpenDNS** (myip.opendns.com) and **Google's name servers** (o-o.myaddr.l.google.com), asked for this network's
-  public address: [OpenDNS's setup guide](https://www.opendns.com/setupguide/), [Google Public DNS](https://developers.google.com/speed/public-dns).
-
-Since 0.7.0, four more for the Netstat tab and the globe's layers, and since 0.7.1 a fifth (named only where the
-library has the Netstat tab):
+Since 0.7.0, one more for the Netstat tab, and since 0.8.0 two for the services' networks:
 
 - **Windows' socket tables and their owners (IP Helper)**:
   [IP Helper](https://learn.microsoft.com/en-us/windows/win32/iphlp/ip-helper-start-page),
@@ -360,31 +223,15 @@ library has the Netstat tab):
   [its rows](https://learn.microsoft.com/en-us/windows/win32/api/tcpmib/ns-tcpmib-mib_tcprow_owner_module).
   Its card names every call the library's Windows reading makes (its `sockets.WINDOWS_CALLS`), and what it leaves:
   the per-connection statistics an administrator must switch on, PowerShell's NetTCPIP cmdlets.
-- **Overpass API**: [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API),
-  [Overpass QL](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL),
-  [the public instances' limits](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html),
-  [OpenStreetMap's copyright](https://www.openstreetmap.org/copyright),
-  [the ODbL](https://opendatacommons.org/licenses/odbl/1-0/).
-- **Wikidata Query Service**: [its user manual](https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual),
-  [Wikidata's licensing](https://www.wikidata.org/wiki/Wikidata:Licensing).
-- **EMODnet Human Activities (WFS)**: [the portal](https://emodnet.ec.europa.eu/en/human-activities),
-  [the cables' record](https://emodnet.ec.europa.eu/geonetwork/srv/api/records/39ebe289-410b-4a5d-88a4-51bfcde538de),
-  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-- **Internet Topology Zoo (GitHub)**: [its repository](https://github.com/mroughan/InternetTopologyZoo),
-  [its licence](https://raw.githubusercontent.com/mroughan/InternetTopologyZoo/main/LICENSE),
-  [Adelaide University's record](https://researchdata.edu.au/internet-topology-zoo-data-set/4045587),
-  [its DOI](https://doi.org/10.25909/30153949.v1).
+- **NetTCPIP** and **netsh** (port proxy and excluded ports): the routes and port proxies of the containers' segments.
+
+0.11.0: the World Wide Web tab's cards (Npcap, DB-IP, OpenDNS, Google's name servers and the globe's data sets'
+sources) are plugin-platform-worldwideweb's, word for word as they were here.
 
 `api_facts()` says what the last read found, asking nothing: when it was and how long it took, the rules and the
 profiles, whether it ran as an administrator, the networks and their categories, Defender's state, and why the last
-read failed, if it did. Since 0.6.0 it also says what the World Wide Web tab knows once it has been asked: whether it
-watches and at which adapter, the packets read, why it cannot watch, and the GeoIP file it places with (and whether
-that file is open now, or let go while nobody watches). Since 0.7.0, once its Netstat view is made, it also says the
-socket tables' last reading (when, how many sockets, how long it took), how the hosts are recorded and what the hosts
-database holds, and each data set of the globe, downloaded or not, under its source's card.
+read failed, if it did. Since 0.7.0, once its Netstat view is made, it also says the socket tables' last reading
+(when, how many sockets, how long it took), how the hosts are recorded and what the hosts database holds.
 
-The six Windows cards' addresses were read on 2026-11-11, the Npcap and DB-IP cards' on 2026-11-15. The name servers'
-cards are the hw-stats plugin's, read on 2026-11-11 (OpenDNS's setup guide and Google Public DNS's questions read again
-on 2026-11-15). The four 0.7.0 cards' were read on 2026-11-18 (EMODnet's capabilities on 2026-11-17), and 0.7.1's,
-the Topology Zoo's, on 2026-11-19. The test
+The six Windows cards' addresses were read on 2026-11-11, the socket tables' on 2026-11-18. The test
 `test_the_cards_pages_answer` asks each address again when `LIMINAL_VENDOR_PAGES=1` is set (it is skipped otherwise).

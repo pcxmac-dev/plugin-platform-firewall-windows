@@ -16,7 +16,6 @@ import plugin_platform_firewall_windows.__main__ as cli
 from liminal_libs.machines.firewall import Rule
 from liminal_libs.machines.plugin import CommandError
 from liminal_libs.machines.windows import ERROR_MARK, PowerShell, decoded
-from liminal_libs.machines.world import not_here_page
 from plugin_platform_firewall_windows import MACHINE, Query, RiskRefused, WindowsFirewallPlugin, WinRule, rule_of
 
 
@@ -368,9 +367,9 @@ def test_the_command_line_reads_finds_and_refuses_a_risk(monkeypatch, capsys):
 def test_off_windows_it_is_not_for_the_machine_and_reads_runs_and_offers_nothing(system, called):
     """Windows Defender Firewall is Windows' own (0.7.0; B-critique S1): off Windows (a Linux platform, the WSL suite's
     among them, or macOS) the plugin is not for the machine at all, with liminal-libs 1.63.0 as with 1.65.0. Its status
-    says so and offers no setup; no read is run, nor a thread started for one; no change is run; its World Wide Web
-    tab says why; it knows no facts. (Its Netstat tab's and the globe's hooks, liminal-libs 1.65.0's:
-    test_netstat.py.)"""
+    says so and offers no setup; no read is run, nor a thread started for one; no change is run; it knows no facts.
+    (Its Netstat tab's hooks, liminal-libs 1.65.0's: test_netstat.py; 0.11.0: it has no World Wide Web tab, which is
+    plugin-platform-worldwideweb's.)"""
     fake = FakeWindows()
     fw = WindowsFirewallPlugin(PowerShell(runner=fake, env={}), elevated=lambda: True, system=system)
     why = f"Windows Defender Firewall is Windows' own, and this machine runs {called}"
@@ -378,8 +377,7 @@ def test_off_windows_it_is_not_for_the_machine_and_reads_runs_and_offers_nothing
     st = fw.status()
     assert (st["applies"], st["valid"], st["summary"], st["why"]) == (False, False, "not for this machine", why)
     assert fw.setup(log=lambda line: None) == [{"step": "enable", "ok": False, "detail": why}]
-    if "world" in fw.HOOKS:  # 0.10.0: the World Wide Web tab is plugin-platform-worldwideweb's with liminal-libs 1.105.0
-        assert fw.ask("world") == not_here_page(why)
+    assert "world" not in fw.HOOKS  # 0.11.0: the World Wide Web tab is plugin-platform-worldwideweb's
     assert fw.snapshot(fresh=True, wait=0.5) is None
     for change in (fw.refresh, lambda: fw.set_rule("RemoteDesktop-UserMode-In-TCP", "on"),
                    lambda: fw.make_rule("Liminal path check 8795", ports="8795")):

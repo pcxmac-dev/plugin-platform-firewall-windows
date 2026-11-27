@@ -25,17 +25,11 @@ from test_plugin import FakeWindows, plugin  # noqa: E402
 CHANGES = ("set_rule", "remove_rule", "make_rule", "set_profile", "set_network", "allow", "remove",
            # 0.8.0: the base's other changes, and NetworkHost's (liminal-libs 1.96.0)
            "move_rules", "new_label", "rename_label", "remove_label", "hosts_recording", "hosts_forget",
-           "world_watching", "world_geoip", "world_asn", "world_layer_get", "world_layer_remove",
            "approve_plan", "grant_network", "revoke_network", "set_domain", "withdraw", "repoint",
-           "remove_leftover", "forget_records",
-           # 0.9.0: the base's GeoIP sources, their file's download, use and removal (liminal-libs 1.101.0)
-           "world_geoip_get", "world_geoip_use", "world_geoip_remove",
-           # 0.10.0 (the review): the sgp4 package's download and removal, the page's alone; its places a read
-           "world_sky_get", "world_sky_remove")
-READS = ("present", "status", "refresh", "find_rules", "show_rules", "wanted", "world", "netstat", "world_sky")
-# with liminal-libs 1.105.0 the World Wide Web tab's hooks are plugin-platform-worldwideweb's, not this plugin's
-CHANGES = tuple(h for h in CHANGES if h in MACHINE.HOOKS)
-READS = tuple(h for h in READS if h in MACHINE.HOOKS)
+           "remove_leftover", "forget_records")
+READS = ("present", "status", "refresh", "find_rules", "show_rules", "wanted", "netstat")
+# 0.11.0 (liminal-libs 1.105.0): the World Wide Web tab's hooks (its GeoIP sources, data sets and the sgp4 package
+# among them) are plugin-platform-worldwideweb's, none of them this plugin's: test_netstat.py
 OFF = ("Public", "off", None, None, None, True)  # the review's body: the Public profile's firewall off, "accepted"
 OPEN = ("x", "in", "allow", "any")  # and its second: a rule letting everything in, on every profile
 OFF_SCRIPT = "Set-NetFirewallProfile -Name Public -Enabled False"

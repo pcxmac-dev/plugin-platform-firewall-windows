@@ -1,23 +1,27 @@
 # Changelog
 
-## 0.11.0 (provisional)
+## 0.11.0 (2026-11-26)
 
 The World Wide Web tab leaves this plugin for plugin-platform-worldwideweb 0.1.0 (Monday list item 33), on liminal-libs
-1.105.0, whose Firewall base no longer has it. This plugin keeps its rules, its Netstat tab, the hosts' recording and the
-Networks tab. Floor unchanged: on a library before 1.105.0 the tab is as in 0.9.0, for one release more.
+1.105.0, whose Firewall base no longer has it; and what this plugin kept of it for an older library is deleted (the
+user, 2026-11-26: "Delete now"). This plugin keeps its rules, its Netstat tab, the hosts' recording and the Networks
+tab. Floor: liminal-libs 1.105.0.
 
-- **With liminal-libs 1.105.0** (`world_in`): its tabs are Netstat and Networks; no hook, key, form or card of the World
-  Wide Web tab is its own (`cards_for` leaves out Npcap, DB-IP, OpenDNS, Google and the data sets' sources, which
-  plugin-platform-worldwideweb's apis.py holds, moved word for word); its page-only changes are those its hooks have.
+- **Its tabs are Netstat and Networks**; no hook, key, form or card of the World Wide Web tab is its own. Its cards
+  are nine: Windows' six, the socket tables' and the services' networks' two. Npcap, DB-IP, OpenDNS, Google and the
+  globe's data sets' sources (0.10.0's six newer ones among them), with the data sets themselves (`INFRASTRUCTURE`, its
+  digest) and the sgp4 package's pins, are plugin-platform-worldwideweb's, moved there word for word, and deleted here.
 - **The base's services** the World Wide Web plugin asks through the platform: the socket table's reading, the hosts
   recorded, the routes kept, a route traced and the places looked up kept (only another plugin may ask the changes).
 - **`rules_covering`, in Windows' own terms:** the rules of the last read covering a port (named, in a range, every
   port), of its protocol or of any, with each rule's id, program, service and group; from the read kept.
 - **The Netstat tab's place column** comes from the World Wide Web plugin's `places`; with that plugin not attached
   the note says why.
-- `apis.py` keeps the tab's cards and data for an older library; they are deleted in the release after.
-- Tests: the 0.9.0 tab's tests run with an older library and are skipped with 1.105.0 (plugin-platform-worldwideweb
-  holds them); test_services.py covers the services and `rules_covering`, skipped with an older library.
+- **Deleted:** `world_in`, `netstat_in` and `cards_for` (the library is always new enough now), the tab's facts on the
+  cards, its page-only hooks and the data sets' words in the Netstat facts.
+- Tests: the World Wide Web tab's (test_world.py, and the globe's and data sets' in test_netstat.py) are deleted:
+  plugin-platform-worldwideweb's tests hold them (its tests/test_globe_sets.py pins the data sets' digest).
+  test_services.py covers the services and `rules_covering`.
 
 ## 0.10.0 (2026-11-26)
 

@@ -2,18 +2,14 @@
 Firewall base for that plugin, which asks a firewall through the platform what only a firewall knows. The base's
 services answer from this plugin's Netstat view (the socket table's reading, the hosts recorded, the routes kept), and
 the rules covering a port are said in Windows' own terms: its rules' ids, programs, services and groups, those naming
-the port first, then a range holding it, then every port. Off Windows each refuses in words. A library before 1.105.0
-has none of them: the tests are skipped there."""
+the port first, then a range holding it, then every port. Off Windows each refuses in words. 0.11.0: the plugin needs
+liminal-libs 1.105.0, so they are always there."""
 from __future__ import annotations
 
 import pytest
 
-from plugin_platform_firewall_windows import world_in
-
 from test_plugin import BUILTINS, FakeWindows, plugin, win_rule
 
-pytestmark = pytest.mark.skipif(world_in(), reason="a library before 1.105.0: the World Wide Web tab is still this "
-                                                   "plugin's, and no other plugin asks these")
 SERVICES = ("netstat_seen", "hosts_found", "hosts_routes", "rules_covering", "hosts_keep_route", "hosts_keep_places",
             "hosts_clear_places")
 
